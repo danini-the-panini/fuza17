@@ -26,4 +26,9 @@ $(document).on('turbolinks:load', () => {
       return this.perform('do_a_thing', { game_id });
     }
   });
+
+  $('#does-a-thing').on('click', e => {
+    App.game.doAThing(things.data('game-id'))
+    e.preventDefault();
+  });
 });
