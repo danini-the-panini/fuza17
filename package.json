@@ -1,0 +1,26 @@
+{
+  "name": "fuza17",
+  "version": "1.0.0",
+  "description": "RubyFuza 2017 Demo",
+  "main": "index.js",
+  "engines": {
+    "node": "7.2.1"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "babel-polyfill": "^6.20.0",
+    "babel-preset-es2015": "^6.18.0",
+    "babel-preset-stage-1": "^6.16.0",
+    "babelify": "^7.3.0",
+    "browserify": "^13.1.1",
+    "browserify-incremental": "^3.1.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "bundle exec rake teaspoon"
+  },
+  "author": "Daniel Smith <jellymann@gmail.com>",
+  "license": "MIT"
+}
