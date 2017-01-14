@@ -13,11 +13,18 @@
 //= require jquery
 //= require jquery_ujs
 //= require turbolinks
-//= require cable
+//= require action_cable
+
+const App = require('cable');
+
+require('channels/games');
 
 $(document).on('turbolinks:load', () => {
+  const things = $('#things');
+  if (things.length === 0) return;
+
   $('#does-a-thing').on('click', e => {
-    App.game.doAThing()
+    App.game.doAThing(things.data('game-id'))
     e.preventDefault();
   });
 });
