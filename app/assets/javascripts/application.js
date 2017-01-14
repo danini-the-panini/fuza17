@@ -13,4 +13,11 @@
 //= require jquery
 //= require jquery_ujs
 //= require turbolinks
-//= require_tree .
+//= require cable
+
+$(document).on('turbolinks:load', () => {
+  $('#does-a-thing').on('click', e => {
+    App.game.doAThing()
+    e.preventDefault();
+  });
+});

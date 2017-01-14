@@ -4,4 +4,6 @@ Rails.application.routes.draw do
   resources :games, only: %i(new create show index delete)
 
   root to: 'games#index'
+
+  mount ActionCable.server => '/cable'
 end
