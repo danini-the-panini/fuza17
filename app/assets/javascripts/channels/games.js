@@ -13,12 +13,14 @@ $(document).on('turbolinks:load', () => {
   if (canvas.length === 0) return;
 
   const gameId = canvas.data('game-id');
+  const playerId = canvas.data('player-id');
 
   const gameEngine = new GameEngine(canvas.get(0));
 
   gameEngine.render();
 
   const players = {};
+  let thisPlayer;
 
   App.game = App.cable.subscriptions.create({
     channel: 'GamesChannel',
@@ -35,6 +37,9 @@ $(document).on('turbolinks:load', () => {
       switch(data.type) {
       case 'player_joined':
         players[data.player.id] = new Player();
+        if (data.player.id === playerId) {
+          thisPlayer = players[data.player.id];
+        }
         gameEngine.addPlayer(players[data.player.id]);
         break;
       case 'player_left':
