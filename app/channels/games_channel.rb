@@ -21,7 +21,7 @@ class GamesChannel < ApplicationCable::Channel
   end
 
   def send_action(data)
-    action = data['action']
+    action = data['player_action']
     ActionCable.server.broadcast channel_name,
                                  message: "#{current_user.name} did a thing",
                                  type: 'player_action',

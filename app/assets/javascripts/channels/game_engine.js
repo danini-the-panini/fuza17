@@ -55,6 +55,36 @@ module.exports = class GameEngine {
       this.setCameraExtents();
       this.renderer.setSize( window.innerWidth, window.innerHeight );
     });
+
+    this.canvasPosition = $(canvas).position();
+    this.rayCaster = new THREE.Raycaster();
+    $(canvas).on('click', evt => {
+      this.mouseClicked(evt);
+    });
+
+    this.players = new THREE.Group();
+    this.scene.add(this.players);
+  }
+
+  onMouseClicked(handler) {
+    this.mouseClickHandler = handler;
+  }
+
+  mouseClicked(evt) {
+    if (!this.mouseClickHandler) return;
+
+    const mousePosition = new THREE.Vector2(
+      ((evt.clientX - this.canvasPosition.left) / this.canvas.width) * 2 - 1,
+      -((evt.clientY - this.canvasPosition.top) / this.canvas.height) * 2 + 1
+    );
+
+    this.rayCaster.setFromCamera(mousePosition, this.camera);
+    const intersects = this.rayCaster.intersectObject(this.floor);
+
+    if (intersects.length > 0) {
+      const point = intersects[0].point;
+      this.mouseClickHandler(point);
+    }
   }
 
   setCameraExtents() {
@@ -63,16 +93,35 @@ module.exports = class GameEngine {
   }
 
   addPlayer(player = new Player()) {
-    this.scene.add(player);
+    this.players.add(player);
     return player;
   }
 
   removePlayer(player) {
-    this.scene.remove(player);
+    this.players.remove(player);
+  }
+
+  update() {
+    const now = +(new Date());
+    const delta = now - this.lastUpdate;
+
+    this.players.children.forEach(player => {
+      player.update(delta);
+    });
+
+    this.lastUpdate = now;
   }
 
   render = () => {
     requestAnimationFrame( this.render );
+
+    this.update();
+
     this.renderer.render(this.scene, this.camera);
+  }
+
+  start() {
+    this.lastUpdate = +(new Date());
+    this.render();
   }
 };

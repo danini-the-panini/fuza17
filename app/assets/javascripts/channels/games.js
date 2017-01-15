@@ -46,6 +46,13 @@ $(document).on('turbolinks:load', () => {
         gameEngine.removePlayer(players[data.player.id]);
         break;
       case 'player_action':
+        switch(data.action.type) {
+        case 'player_clicked':
+          players[data.player.id].moveTo(data.action.point)
+          break;
+        default:
+          break;
+        }
         break;
       default:
         break;
@@ -53,7 +60,14 @@ $(document).on('turbolinks:load', () => {
     },
 
     sendAction(action) {
-      return this.perform('send_action', { action });
+      this.perform('send_action', { player_action: action });
     }
+  });
+
+  gameEngine.onMouseClicked(point => {
+    App.game.sendAction({
+      type: 'player_clicked',
+      point: { x: point.x, y: point.y }
+    });
   });
 });
