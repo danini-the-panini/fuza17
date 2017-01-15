@@ -31,7 +31,6 @@ $(document).on('turbolinks:load', () => {
   }
 
   function performAction(action, dataPlayer, player) {
-    console.log('PERFORMING ACTION: ', action);
     switch(action.type) {
     case 'player_clicked':
       player.moveTo(action.point, getTimePassed(dataPlayer.time));
@@ -66,7 +65,6 @@ $(document).on('turbolinks:load', () => {
         thisPlayer = players[playerId] = new Player(data.player.state);
         const thisTime = +(new Date());
         timeOffset = (data.player.time * 1000.0) - thisTime;
-        console.log(thisTime, data.player.time, timeOffset);
         thisPlayer.onFinishedMoving(() => {
           App.game.sendAction({ type: 'player_finished_moving' });
         })

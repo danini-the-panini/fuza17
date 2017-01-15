@@ -50,7 +50,6 @@ module.exports = class Player extends THREE.Object3D {
     this.moveTarget.set(point.x, point.y, 0);
     this.moving = true;
     if (timePassed > 0) {
-      console.log(`Time PAssed: ${timePassed}`);
       this.moveOverTime(timePassed);
     }
   }
