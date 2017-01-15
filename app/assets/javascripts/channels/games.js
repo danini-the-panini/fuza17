@@ -36,20 +36,36 @@ $(document).on('turbolinks:load', () => {
       console.log(data);
       switch(data.type) {
       case 'player_joined':
-        players[data.player.id] = new Player();
-        if (data.player.id === playerId) {
-          thisPlayer = players[data.player.id];
+        if (data.player.id !== playerId) {
+          players[data.player.id] = new Player(data.player.state);
+          gameEngine.addPlayer(players[data.player.id]);
         }
-        gameEngine.addPlayer(players[data.player.id]);
+        break;
+      case 'player_setup':
+        thisPlayer = players[playerId] = new Player(data.player.state);
+        thisPlayer.onFinishedMoving(() => {
+          App.game.sendAction({ type: 'player_finished_moving' });
+        })
+        gameEngine.addPlayer(thisPlayer);
+        break;
+      case 'other_players':
+        console.log(data.players);
+        data.players.forEach(p => {
+          players[p.id] = new Player(p.state);
+          gameEngine.addPlayer(players[p.id]);
+        });
         break;
       case 'player_left':
         gameEngine.removePlayer(players[data.player.id]);
+        delete players[data.player.id];
         break;
       case 'player_action':
         switch(data.action.type) {
         case 'player_clicked':
           players[data.player.id].moveTo(data.action.point)
           break;
+        case 'player_finished_moving':
+          players[data.player.id].position.set(data.player.state.x, data.player.state.y, 0.0);
         default:
           break;
         }
@@ -60,7 +76,7 @@ $(document).on('turbolinks:load', () => {
     },
 
     sendAction(action) {
-      this.perform('send_action', { player_action: action });
+      this.perform('send_action', { player_action: action, state: thisPlayer.getState() });
     }
   });
 
