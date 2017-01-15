@@ -101,6 +101,11 @@ module.exports = class GameEngine {
     this.players.remove(player);
   }
 
+  followPlayer(player) {
+    this.followingPlayer = player;
+    this.light.target = player;
+  }
+
   update() {
     const now = +(new Date());
     const delta = now - this.lastUpdate;
@@ -108,6 +113,12 @@ module.exports = class GameEngine {
     this.players.children.forEach(player => {
       player.update(delta);
     });
+
+    if (this.followingPlayer) {
+      this.light.position.copy(this.followingPlayer.position).add(GameEngine.LIGHT_OFFSET);
+      this.camera.position.copy(this.followingPlayer.position).add(GameEngine.CAMERA_OFFSET);
+      this.camera.lookAt(this.followingPlayer.position);
+    }
 
     this.lastUpdate = now;
   }

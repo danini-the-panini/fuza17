@@ -69,6 +69,7 @@ $(document).on('turbolinks:load', () => {
           App.game.sendAction({ type: 'player_finished_moving' });
         })
         gameEngine.addPlayer(thisPlayer);
+        gameEngine.followPlayer(thisPlayer);
         break;
       case 'other_players':
         data.players.forEach(p => {
