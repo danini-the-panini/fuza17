@@ -28,23 +28,31 @@ module.exports = class Player extends THREE.Object3D {
 
   update(delta) {
     if (this.moving) {
-      const distanceToTargetSq = this.moveTarget.distanceToSquared(this.position);
-      const minStep = Player.SPEED * delta;
-      if (distanceToTargetSq <= minStep * minStep) {
-        this.position.copy(this.moveTarget);
-        this.moving = false;
-        if (this.finishMoveHandler) this.finishMoveHandler();
-      } else if (distanceToTargetSq > 0) {
-        this._vector3.copy(this.moveTarget).sub(this.position)
-          .normalize().multiplyScalar(minStep);
-        this.position.add(this._vector3);
-      }
+      this.moveOverTime(delta);
     }
   }
 
-  moveTo(point) {
+  moveOverTime(delta) {
+    const distanceToTargetSq = this.moveTarget.distanceToSquared(this.position);
+    const minStep = Player.SPEED * delta;
+    if (distanceToTargetSq <= minStep * minStep) {
+      this.position.copy(this.moveTarget);
+      this.moving = false;
+      if (this.finishMoveHandler) this.finishMoveHandler();
+    } else if (distanceToTargetSq > 0) {
+      this._vector3.copy(this.moveTarget).sub(this.position)
+        .normalize().multiplyScalar(minStep);
+      this.position.add(this._vector3);
+    }
+  }
+
+  moveTo(point, timePassed = 0.0) {
     this.moveTarget.set(point.x, point.y, 0);
     this.moving = true;
+    if (timePassed > 0) {
+      console.log(`Time PAssed: ${timePassed}`);
+      this.moveOverTime(timePassed);
+    }
   }
 
   getState() {

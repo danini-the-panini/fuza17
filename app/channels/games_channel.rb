@@ -47,7 +47,6 @@ class GamesChannel < ApplicationCable::Channel
   end
 
   def unsubscribed
-    puts '##### UNSUBSCRIBE #####'
     player = game.players.find_by(user: current_user)
     player.destroy
 

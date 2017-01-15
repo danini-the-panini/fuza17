@@ -22,6 +22,27 @@ $(document).on('turbolinks:load', () => {
   const players = {};
   let thisPlayer;
 
+  let timeOffset = 0.0;
+
+  function getTimePassed(startTime) {
+    const thisTime = +(new Date());
+    const thisStartTime = (startTime * 1000.0) - timeOffset;
+    return thisTime - thisStartTime;
+  }
+
+  function performAction(action, dataPlayer, player) {
+    console.log('PERFORMING ACTION: ', action);
+    switch(action.type) {
+    case 'player_clicked':
+      player.moveTo(action.point, getTimePassed(dataPlayer.time));
+      break;
+    case 'player_finished_moving':
+      player.position.set(dataPlayer.state.x, dataPlayer.state.y, 0.0);
+    default:
+      break;
+    }
+  }
+
   App.game = App.cable.subscriptions.create({
     channel: 'GamesChannel',
     game_id: gameId
@@ -43,16 +64,22 @@ $(document).on('turbolinks:load', () => {
         break;
       case 'player_setup':
         thisPlayer = players[playerId] = new Player(data.player.state);
+        const thisTime = +(new Date());
+        timeOffset = (data.player.time * 1000.0) - thisTime;
+        console.log(thisTime, data.player.time, timeOffset);
         thisPlayer.onFinishedMoving(() => {
           App.game.sendAction({ type: 'player_finished_moving' });
         })
         gameEngine.addPlayer(thisPlayer);
         break;
       case 'other_players':
-        console.log(data.players);
         data.players.forEach(p => {
           players[p.id] = new Player(p.state);
           gameEngine.addPlayer(players[p.id]);
+
+          if (p.action) {
+            performAction(p.action, p, players[p.id]);
+          }
         });
         break;
       case 'player_left':
@@ -60,15 +87,7 @@ $(document).on('turbolinks:load', () => {
         delete players[data.player.id];
         break;
       case 'player_action':
-        switch(data.action.type) {
-        case 'player_clicked':
-          players[data.player.id].moveTo(data.action.point)
-          break;
-        case 'player_finished_moving':
-          players[data.player.id].position.set(data.player.state.x, data.player.state.y, 0.0);
-        default:
-          break;
-        }
+        performAction(data.action, data.player, players[data.player.id]);
         break;
       default:
         break;
