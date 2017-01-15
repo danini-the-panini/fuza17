@@ -7,9 +7,8 @@ class GamesChannel < ApplicationCable::Channel
 
     time = Time.now
     intial_state = {
-      # x: (rand * 200.0) - 100.0,
-      # y: (rand * 200.0) - 100.0
-      x: 0.0, y: 0.0
+      x: (rand * 200.0) - 100.0,
+      y: (rand * 200.0) - 100.0
     }
 
     ActionCable.server.broadcast channel_name,
