@@ -18,15 +18,13 @@ $(document).on('turbolinks:load', () => {
 
   gameEngine.render();
 
-  let player;
+  const players = {};
 
   App.game = App.cable.subscriptions.create({
     channel: 'GamesChannel',
     game_id: gameId
   }, {
     connected() {
-      player = new Player();
-      gameEngine.addPlayer(player);
     },
 
     disconnected() {
@@ -34,10 +32,23 @@ $(document).on('turbolinks:load', () => {
 
     received(data) {
       console.log(data);
+      switch(data.type) {
+      case 'player_joined':
+        players[data.player.id] = new Player();
+        gameEngine.addPlayer(players[data.player.id]);
+        break;
+      case 'player_left':
+        gameEngine.removePlayer(players[data.player.id]);
+        break;
+      case 'player_action':
+        break;
+      default:
+        break;
+      }
     },
 
     sendAction(action) {
-      return this.perform('send_action', { gameId, action });
+      return this.perform('send_action', { action });
     }
   });
 });
