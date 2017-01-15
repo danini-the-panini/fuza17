@@ -15,7 +15,8 @@
     "babel-preset-stage-1": "^6.16.0",
     "babelify": "^7.3.0",
     "browserify": "^13.1.1",
-    "browserify-incremental": "^3.1.1"
+    "browserify-incremental": "^3.1.1",
+    "three": "^0.83.0"
   },
   "devDependencies": {},
   "scripts": {

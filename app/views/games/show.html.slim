@@ -1,5 +1,3 @@
-h1= @game.name
-
-ul#things(data-game-id="#{@game.id}")
-
-button#does-a-thing Do a thing
+.game
+  h1.game__title= @game.name
+  canvas#game-canvas.game__canvas(data-game-id="#{@game.id}")

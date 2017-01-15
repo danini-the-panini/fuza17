@@ -1,5 +1,5 @@
 doctype html
-html
+html(class=page_class)
   head
     title Fuza17
     = csrf_meta_tags
@@ -8,9 +8,10 @@ html
     = javascript_include_tag 'application', 'data-turbolinks-track': 'reload'
 
   body
-    p.notice= notice
-    p.alert= alert
+    - unless current_page?(game_path)
+      p.notice= notice
+      p.alert= alert
 
-    = render 'layouts/nav'
+      = render 'layouts/nav'
 
     = yield

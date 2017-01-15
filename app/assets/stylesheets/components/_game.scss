@@ -1,0 +1,20 @@
+html.page-game-show {
+  overflow: hidden;
+}
+
+.game {
+  font-size: 1rem;
+  position: relative;
+  overflow: hidden;
+
+  .game__title {
+    font-size: 2em;
+    position: absolute;
+    top: 1em;
+    left: 1em;
+    color: white;
+  }
+
+  .game__canvas {
+  }
+}
