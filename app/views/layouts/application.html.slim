@@ -8,7 +8,7 @@ html(class=page_class)
     = javascript_include_tag 'application', 'data-turbolinks-track': 'reload'
 
   body
-    - unless current_page?(game_path)
+    - unless game_page?
       p.notice= notice
       p.alert= alert
 
