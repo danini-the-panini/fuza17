@@ -27,8 +27,6 @@ $(document).on('turbolinks:load', () => {
   let thisPlayer;
   let navPath;
 
-  let visualNavPath;
-
   let timeOffset = 0.0;
 
   function getTimePassed(startTime) {
@@ -40,7 +38,6 @@ $(document).on('turbolinks:load', () => {
   function navigateToNextPoint() {
     const nextPoint = navPath.shift();
     if (!nextPoint) {
-      // gameEngine.scene.remove(visualNavPath);
       App.game.sendAction({
         type: 'player_finished_moving',
         position: { x: thisPlayer.position.x, y: thisPlayer.position.y }
@@ -175,9 +172,7 @@ $(document).on('turbolinks:load', () => {
 
   gameEngine.onMouseClicked(point => {
     navPath = gameEngine.map.getPath(thisPlayer.position, point);
-    // if (visualNavPath) gameEngine.scene.remove(visualNavPath);
-    // visualNavPath = createVisualPath(navPath.map(v => new THREE.Vector3(v.x, v.y, 0.5)));
-    gameEngine.scene.add(visualNavPath);
+    if (!navPath) return;
     navigateToNextPoint();
   });
 

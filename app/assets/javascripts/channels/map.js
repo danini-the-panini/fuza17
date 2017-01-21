@@ -104,6 +104,10 @@ module.exports = class Map extends THREE.Object3D {
     this.navGraph = new Graph(this.mapData.map(row => row.map(v => v ? 9999 : 1)));
   }
 
+  isTree(i, j) {
+    return this.mapData[i][j] === 1 || this.mapData[i][j] === 2;
+  }
+
   getPath(from, to) {
     const startI = Math.floor(from.x + this.mapData.length/2);
     const startJ = Math.floor(from.y + this.mapData[0].length/2);
@@ -111,6 +115,7 @@ module.exports = class Map extends THREE.Object3D {
     const endJ = Math.floor(to.y + this.mapData[0].length/2);
 
     if (startI === endI && startJ === endJ) {
+      if (this.isTree(endI, endJ)) return;
       return [to];
     }
 
@@ -119,10 +124,15 @@ module.exports = class Map extends THREE.Object3D {
 
     const result = AStar.search(this.navGraph, start, end);
 
-    const path = result.map(node => {
+    const path = result.filter(node => {
+      return !this.isTree(node.x, node.y);
+    }).map(node => {
       return new THREE.Vector2(node.x - this.mapData.length/2, node.y - this.mapData[0].length/2);
     });
-    path[path.length - 1].copy(to);
+
+    if (result.length === path.length) {
+      path[path.length - 1].copy(to);
+    }
 
     return path;
   }
