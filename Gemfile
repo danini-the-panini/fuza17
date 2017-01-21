@@ -20,6 +20,8 @@ gem 'turbolinks', '~> 5'
 gem 'jbuilder', '~> 2.5'
 gem 'slim-rails'
 
+gem 'chunky_png'
+
 group :development, :test do
   gem 'coffee-script' # required by teaspoon
   gem 'factory_girl_rails'

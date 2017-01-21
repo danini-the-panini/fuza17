@@ -80,7 +80,7 @@ module.exports = class GameEngine {
       -((evt.clientY - this.canvasPosition.top) / this.canvas.height) * 2 + 1
     );
 
-    const floorIntersection = this.getIntersection(mousePosition, [this.map]);
+    const floorIntersection = this.getIntersection(mousePosition, [this.map.floor]);
     const playerIntersection = this.getIntersection(mousePosition, this.getOtherPlayers());
 
     let acknowledgePlayerHit = false;

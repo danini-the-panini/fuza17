@@ -25,6 +25,9 @@ $(document).on('turbolinks:load', () => {
 
   const players = {};
   let thisPlayer;
+  let navPath;
+
+  let visualNavPath;
 
   let timeOffset = 0.0;
 
@@ -32,6 +35,23 @@ $(document).on('turbolinks:load', () => {
     const thisTime = +(new Date());
     const thisStartTime = (startTime * 1000.0) - timeOffset;
     return thisTime - thisStartTime;
+  }
+
+  function navigateToNextPoint() {
+    const nextPoint = navPath.shift();
+    if (!nextPoint) {
+      // gameEngine.scene.remove(visualNavPath);
+      App.game.sendAction({
+        type: 'player_finished_moving',
+        position: { x: thisPlayer.position.x, y: thisPlayer.position.y }
+      });
+      return;
+    }
+    App.game.sendAction({
+      type: 'player_started_moving',
+      position: { x: thisPlayer.position.x, y: thisPlayer.position.y },
+      point: { x: nextPoint.x, y: nextPoint.y }
+    });
   }
 
   const tmpVector3 = new THREE.Vector3();
@@ -104,10 +124,7 @@ $(document).on('turbolinks:load', () => {
         const thisTime = +(new Date());
         timeOffset = (data.player.time * 1000.0) - thisTime;
         thisPlayer.onFinishedMoving(() => {
-          App.game.sendAction({
-            type: 'player_finished_moving',
-            position: { x: thisPlayer.position.x, y: thisPlayer.position.y }
-          });
+          navigateToNextPoint();
         })
         gameEngine.addPlayer(thisPlayer);
         gameEngine.setThisPlayer(thisPlayer);
@@ -140,12 +157,28 @@ $(document).on('turbolinks:load', () => {
     }
   });
 
-  gameEngine.onMouseClicked(point => {
-    App.game.sendAction({
-      type: 'player_started_moving',
-      position: { x: thisPlayer.position.x, y: thisPlayer.position.y },
-      point: { x: point.x, y: point.y }
+  function createVisualPath(vertices) {
+  	var lineGeometry = new THREE.Geometry();
+  	var vertArray = lineGeometry.vertices;
+    vertices.forEach(v => vertArray.push(v));
+  	lineGeometry.computeLineDistances();
+  	var lineMaterial = new THREE.LineDashedMaterial({
+    	color: 0xff0000,
+    	linewidth: 10,
+    	scale: 1,
+    	dashSize: 0.2,
+    	gapSize: 0.1
     });
+  	var line = new THREE.Line( lineGeometry, lineMaterial );
+    return line;
+  }
+
+  gameEngine.onMouseClicked(point => {
+    navPath = gameEngine.map.getPath(thisPlayer.position, point);
+    // if (visualNavPath) gameEngine.scene.remove(visualNavPath);
+    // visualNavPath = createVisualPath(navPath.map(v => new THREE.Vector3(v.x, v.y, 0.5)));
+    gameEngine.scene.add(visualNavPath);
+    navigateToNextPoint();
   });
 
   gameEngine.onPlayerClicked(player => {
