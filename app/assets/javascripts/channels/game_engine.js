@@ -68,10 +68,17 @@ module.exports = class GameEngine {
 
     this.players = new THREE.Group();
     this.scene.add(this.players);
+
+    this.projectiles = new THREE.Group();
+    this.scene.add(this.projectiles);
   }
 
   onMouseClicked(handler) {
     this.mouseClickHandler = handler;
+  }
+
+  onPlayerClicked(handler) {
+    this.playerClickHandler = handler;
   }
 
   mouseClicked(evt) {
@@ -82,13 +89,26 @@ module.exports = class GameEngine {
       -((evt.clientY - this.canvasPosition.top) / this.canvas.height) * 2 + 1
     );
 
-    this.rayCaster.setFromCamera(mousePosition, this.camera);
-    const intersects = this.rayCaster.intersectObject(this.floor);
+    const floorIntersection = this.getIntersection(mousePosition, [this.floor]);
+    const playerIntersection = this.getIntersection(mousePosition, this.players.children);
 
-    if (intersects.length > 0) {
-      const point = intersects[0].point;
+    if (playerIntersection) {
+      const player = playerIntersection.object.parent;
+      this.playerClickHandler(player);
+    } else if (floorIntersection) {
+      const point = floorIntersection.point;
       this.mouseClickHandler(point);
     }
+  }
+
+  getIntersection(mousePosition, objects) {
+    this.rayCaster.setFromCamera(mousePosition, this.camera);
+    const intersects = this.rayCaster.intersectObjects(objects, true);
+
+    if (intersects.length > 0) {
+      return intersects[0];
+    }
+    return null;
   }
 
   setCameraExtents() {
@@ -101,8 +121,17 @@ module.exports = class GameEngine {
     return player;
   }
 
+  addProjectile(projectile) {
+    this.projectiles.add(projectile);
+    return projectile;
+  }
+
   removePlayer(player) {
     this.players.remove(player);
+  }
+
+  removeProjectile(projectile) {
+    this.projectiles.remove(projectile);
   }
 
   followPlayer(player) {
@@ -116,6 +145,10 @@ module.exports = class GameEngine {
 
     this.players.children.forEach(player => {
       player.update(delta);
+    });
+
+    this.projectiles.children.forEach(projectile => {
+      projectile.update(delta);
     });
 
     if (this.followingPlayer) {

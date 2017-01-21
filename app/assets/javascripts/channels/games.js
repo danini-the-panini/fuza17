@@ -1,7 +1,9 @@
 const App = require('../cable');
 
+const THREE = require('three');
 const GameEngine = require('./game_engine');
 const Player = require('./player');
+const HomingMissile = require('./homingMissile');
 
 $(document).on('turbolinks:load', () => {
   if (App.game) {
@@ -30,6 +32,8 @@ $(document).on('turbolinks:load', () => {
     return thisTime - thisStartTime;
   }
 
+  const tmpVector3 = new THREE.Vector3();
+
   function performAction(action, dataPlayer, player) {
     switch(action.type) {
     case 'player_clicked':
@@ -37,6 +41,19 @@ $(document).on('turbolinks:load', () => {
       break;
     case 'player_finished_moving':
       player.position.set(dataPlayer.state.x, dataPlayer.state.y, 0.0);
+      break;
+    case 'target_player': {
+      console.log(players);
+      const targetPlayer = players[action.target_id];
+      tmpVector3.set(0, 0, 0.5).add(player.position);
+      const projectile = new HomingMissile(tmpVector3, targetPlayer);
+      projectile.targetObject(targetPlayer, getTimePassed(dataPlayer.time));
+      gameEngine.addProjectile(projectile);
+      projectile.onFinishedMoving(() => {
+        gameEngine.removeProjectile(projectile);
+      });
+      break;
+    }
     default:
       break;
     }
@@ -57,12 +74,12 @@ $(document).on('turbolinks:load', () => {
       switch(data.type) {
       case 'player_joined':
         if (data.player.id !== playerId) {
-          players[data.player.id] = new Player(data.player.state);
+          players[data.player.id] = new Player(data.player.id, data.player.state);
           gameEngine.addPlayer(players[data.player.id]);
         }
         break;
       case 'player_setup':
-        thisPlayer = players[playerId] = new Player(data.player.state);
+        thisPlayer = players[playerId] = new Player(data.player.id, data.player.state);
         const thisTime = +(new Date());
         timeOffset = (data.player.time * 1000.0) - thisTime;
         thisPlayer.onFinishedMoving(() => {
@@ -73,7 +90,7 @@ $(document).on('turbolinks:load', () => {
         break;
       case 'other_players':
         data.players.forEach(p => {
-          players[p.id] = new Player(p.state);
+          players[p.id] = new Player(p.id, p.state);
           gameEngine.addPlayer(players[p.id]);
 
           if (p.action) {
@@ -102,6 +119,14 @@ $(document).on('turbolinks:load', () => {
     App.game.sendAction({
       type: 'player_clicked',
       point: { x: point.x, y: point.y }
+    });
+  });
+
+  gameEngine.onPlayerClicked(player => {
+    App.game.sendAction({
+      type: 'target_player',
+      point: { x: thisPlayer.position.x, y: thisPlayer.position.y },
+      target_id: player.playerId
     });
   });
 });
