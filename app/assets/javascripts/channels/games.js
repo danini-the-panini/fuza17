@@ -35,6 +35,7 @@ $(document).on('turbolinks:load', () => {
   const tmpVector3 = new THREE.Vector3();
 
   function performAction(action, dataPlayer, player) {
+    player.setState(dataPlayer.state);
     switch(action.type) {
     case 'player_clicked':
       player.moveTo(action.point, getTimePassed(dataPlayer.time));
@@ -123,11 +124,16 @@ $(document).on('turbolinks:load', () => {
   });
 
   gameEngine.onPlayerClicked(player => {
+    const time = +(new Date());
+    const abilityIndex = 0;
+    if (time - thisPlayer.lastHits[abilityIndex] < thisPlayer.cooldowns[abilityIndex]) {
+      return;
+    }
     App.game.sendAction({
       type: 'target_player',
       point: { x: thisPlayer.position.x, y: thisPlayer.position.y },
       target_id: player.playerId,
-      ability_index: 0
+      ability_index: abilityIndex
     });
   });
 });

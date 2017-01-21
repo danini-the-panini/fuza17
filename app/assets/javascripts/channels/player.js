@@ -27,6 +27,12 @@ class Player extends THREE.Object3D {
     this.lastHits = state.last_hits;
   }
 
+  setState(state) {
+    this.position.set(state.x, state.y, 0.0);
+    this.cooldowns = state.cooldowns;
+    this.lastHits = state.last_hits;
+  }
+
   update(delta) {
     if (this.moving) {
       this.moveOverTime(delta);
