@@ -1,9 +1,10 @@
 const THREE = require('three');
+const Map = require('./map');
 const Player = require('./player');
 
 module.exports = class GameEngine {
-  static CAMERA_OFFSET = new THREE.Vector3(-5, -5, 10)
-  static LIGHT_OFFSET = new THREE.Vector3(10, -8, 20)
+  static CAMERA_OFFSET = new THREE.Vector3(0, -5, 10)
+  static LIGHT_OFFSET = new THREE.Vector3(10, 3, 20)
 
   constructor(canvas) {
     this.canvas = canvas;
@@ -17,18 +18,8 @@ module.exports = class GameEngine {
     this.camera.up = new THREE.Vector3(0, 0, 1);
     this.camera.lookAt(new THREE.Vector3(0, 0, 0));
 
-    const texture = new THREE.TextureLoader().load('/assets/floor.png');
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set( 20, 20 );
-    this.floor = new THREE.Mesh(
-      new THREE.BoxGeometry(200, 200, 1),
-      new THREE.MeshPhongMaterial({ color: 0x00ff00, map: texture })
-    );
-    this.floor.position.z = -0.5;
-    this.floor.castShadow = true;
-    this.floor.receiveShadow = true;
-    this.scene.add(this.floor);
+    this.map = new Map();
+    this.scene.add(this.map);
 
     this.light = new THREE.DirectionalLight(0xffffff, 0.5);
     this.light.position.copy(GameEngine.LIGHT_OFFSET);
@@ -89,7 +80,7 @@ module.exports = class GameEngine {
       -((evt.clientY - this.canvasPosition.top) / this.canvas.height) * 2 + 1
     );
 
-    const floorIntersection = this.getIntersection(mousePosition, [this.floor]);
+    const floorIntersection = this.getIntersection(mousePosition, [this.map]);
     const playerIntersection = this.getIntersection(mousePosition, this.getOtherPlayers());
 
     let acknowledgePlayerHit = false;
