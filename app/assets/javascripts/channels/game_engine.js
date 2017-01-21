@@ -17,9 +17,13 @@ module.exports = class GameEngine {
     this.camera.up = new THREE.Vector3(0, 0, 1);
     this.camera.lookAt(new THREE.Vector3(0, 0, 0));
 
+    const texture = new THREE.TextureLoader().load('/assets/floor.png');
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set( 20, 20 );
     this.floor = new THREE.Mesh(
       new THREE.BoxGeometry(200, 200, 1),
-      new THREE.MeshPhongMaterial({ color: 0x00ff00 })
+      new THREE.MeshPhongMaterial({ color: 0x00ff00, map: texture })
     );
     this.floor.position.z = -0.5;
     this.floor.castShadow = true;
