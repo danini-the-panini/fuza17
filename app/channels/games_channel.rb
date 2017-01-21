@@ -9,12 +9,14 @@ class GamesChannel < ApplicationCable::Channel
     intial_state = {
       x: (rand * 20.0) - 10.0,
       y: (rand * 20.0) - 10.0,
+      hp: 100.0,
       abilities: [
         {
           cooldown: 0.5,
           type: 'target',
           range: 10.0,
-          last_hit: time.to_f
+          last_hit: time.to_f,
+          damage: 10.0
         }
       ]
     }
@@ -62,24 +64,67 @@ class GamesChannel < ApplicationCable::Channel
                                  player: { id: current_user.id }
   end
 
-  def send_action(data)
+  def send_action(action)
     player = game.players.find_by(user: current_user)
     time = Time.now
 
-    action = data['player_action']
-    state = data['state']
+    state = player.last_state
 
-    if action['type'] == 'target_player'
+    case action['type']
+    when 'player_started_moving'
+      state['x'] = action['position']['x']
+      state['y'] = action['position']['y']
+    when 'player_finished_moving'
+      state['x'] = action['position']['x']
+      state['y'] = action['position']['y']
+    when 'target_player'
+      state['x'] = action['point']['x']
+      state['y'] = action['point']['y']
       ability_index = action['ability_index']
-      ability = player.last_state['abilities'][ability_index]
+      ability = state['abilities'][ability_index]
       if time.to_f - ability['last_hit'] < ability['cooldown']
         return
       else
         state['abilities'][ability_index]['last_hit'] = time.to_f
+        action['hit_id'] = SecureRandom.hex(10)
       end
-    end
+    when 'player_hit'
+      target_player = game.players.find_by(user_id: action['player_id'])
+      target_state = target_player.last_state
 
-    player.update(last_action: action, last_action_time: time, last_state: state)
+      consensus_agreement = (game.players.count * 0.75).ceil
+
+      hit_id = action['hit_id']
+      game.hit_registers.find_or_create_by(hit_player_id: target_player.user_id,
+                                           reporting_player_id: current_user.id,
+                                           hit_identifier: hit_id)
+
+      hit_count = game.hit_registers.where(hit_player_id: target_player.user_id,
+                                            hit_identifier: hit_id).count
+
+      if hit_count < consensus_agreement
+        target_player.update(last_state: target_state)
+        return
+      end
+      target_state['hp'] -= action['damage']
+
+      ActionCable.server.broadcast channel_name,
+                                   type: 'player_action',
+                                   player: {
+                                     id: target_player.user_id,
+                                     name: target_player.user.name,
+                                     state: target_state,
+                                     time: time.to_f
+                                   },
+                                   action: action
+
+      target_player.update(last_state: target_state)
+
+      game.hit_registers.where(hit_player_id: target_player.user_id,
+                                            hit_identifier: hit_id).destroy_all
+      return
+    else
+    end
 
     ActionCable.server.broadcast channel_name,
                                  type: 'player_action',
@@ -90,6 +135,8 @@ class GamesChannel < ApplicationCable::Channel
                                    time: time.to_f
                                  },
                                  action: action
+
+    player.update(last_action: action, last_action_time: time, last_state: state)
   end
 
   private

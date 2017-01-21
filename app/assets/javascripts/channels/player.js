@@ -31,27 +31,20 @@ class Player extends THREE.Object3D {
     this.moving = false;
     this.speed = Player.SPEED;
 
-    this.position.set(state.x, state.y, 0.0);
-    this.abilities = state.abilities;
+    this.setState(state);
   }
 
   setState(state) {
     this.position.set(state.x, state.y, 0.0);
     this.abilities = state.abilities;
+    this.hp = state.hp;
+    this.state = state;
   }
 
   update(delta) {
     if (this.moving) {
       this.moveOverTime(delta);
     }
-  }
-
-  getState() {
-    return {
-      x: this.position.x,
-      y: this.position.y,
-      abilities: this.abilities
-    };
   }
 };
 

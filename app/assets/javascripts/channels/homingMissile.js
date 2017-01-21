@@ -6,7 +6,7 @@ class HomingMissile extends THREE.Object3D {
   static SPEED = 0.05
   static HALF_UP = new THREE.Vector3(0, 0, 0.5)
 
-  constructor(startingPoint, target) {
+  constructor(hitId, ability, startingPoint, target) {
     super();
 
     const geometry = new THREE.SphereGeometry(0.15);
@@ -16,6 +16,9 @@ class HomingMissile extends THREE.Object3D {
     mesh.receiveShadow = true;
     mesh.up.set(0, 0, 1);
     this.add(mesh);
+
+    this.hitId = hitId;
+    this.ability = ability;
 
     this.position.copy(startingPoint);
     this.target = target;

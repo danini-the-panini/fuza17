@@ -21,6 +21,8 @@ $(document).on('turbolinks:load', () => {
 
   gameEngine.render();
 
+  const possibleHits = {}
+
   const players = {};
   let thisPlayer;
 
@@ -37,7 +39,7 @@ $(document).on('turbolinks:load', () => {
   function performAction(action, dataPlayer, player) {
     player.setState(dataPlayer.state);
     switch(action.type) {
-    case 'player_clicked':
+    case 'player_started_moving':
       player.moveTo(action.point, getTimePassed(dataPlayer.time));
       break;
     case 'player_finished_moving':
@@ -47,13 +49,30 @@ $(document).on('turbolinks:load', () => {
       {
         player.moving = false;
         const targetPlayer = players[action.target_id];
+        const ability = player.abilities[action.ability_index];
         tmpVector3.set(0, 0, 0.5).add(player.position);
-        const projectile = new HomingMissile(tmpVector3, targetPlayer);
+        const projectile = new HomingMissile(action.hit_id, ability, tmpVector3, targetPlayer);
         projectile.targetObject(targetPlayer, getTimePassed(dataPlayer.time));
         gameEngine.addProjectile(projectile);
         projectile.onFinishedMoving(() => {
+          possibleHits[action.hit_id] = true;
+          App.game.sendAction({
+            type: 'player_hit',
+            damage: ability.damage,
+            hit_id: action.hit_id,
+            player_id: action.target_id
+          });
           gameEngine.removeProjectile(projectile);
         });
+      }
+      break;
+    case 'player_hit':
+      {
+        if (!possibleHits[action.hit_id]) return;
+        const targetPlayer = players[action.player_id];
+        targetPlayer
+        console.log('HP: ', player.hp);
+        delete possibleHits[action.hit_id];
       }
       break;
     default:
@@ -85,7 +104,10 @@ $(document).on('turbolinks:load', () => {
         const thisTime = +(new Date());
         timeOffset = (data.player.time * 1000.0) - thisTime;
         thisPlayer.onFinishedMoving(() => {
-          App.game.sendAction({ type: 'player_finished_moving' });
+          App.game.sendAction({
+            type: 'player_finished_moving',
+            position: { x: thisPlayer.position.x, y: thisPlayer.position.y }
+          });
         })
         gameEngine.addPlayer(thisPlayer);
         gameEngine.setThisPlayer(thisPlayer);
@@ -114,13 +136,14 @@ $(document).on('turbolinks:load', () => {
     },
 
     sendAction(action) {
-      this.perform('send_action', { player_action: action, state: thisPlayer.getState() });
+      this.perform('send_action', action);
     }
   });
 
   gameEngine.onMouseClicked(point => {
     App.game.sendAction({
-      type: 'player_clicked',
+      type: 'player_started_moving',
+      position: { x: thisPlayer.position.x, y: thisPlayer.position.y },
       point: { x: point.x, y: point.y }
     });
   });
