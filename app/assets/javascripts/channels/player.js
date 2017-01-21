@@ -23,6 +23,8 @@ class Player extends THREE.Object3D {
     this.speed = Player.SPEED;
 
     this.position.set(state.x, state.y, 0.0);
+    this.cooldowns = state.cooldowns;
+    this.lastHits = state.last_hits;
   }
 
   update(delta) {
@@ -34,7 +36,9 @@ class Player extends THREE.Object3D {
   getState() {
     return {
       x: this.position.x,
-      y: this.position.y
+      y: this.position.y,
+      cooldowns: this.cooldowns,
+      last_hits: this.lastHits
     };
   }
 };

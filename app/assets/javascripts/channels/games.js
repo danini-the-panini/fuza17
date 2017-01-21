@@ -126,7 +126,8 @@ $(document).on('turbolinks:load', () => {
     App.game.sendAction({
       type: 'target_player',
       point: { x: thisPlayer.position.x, y: thisPlayer.position.y },
-      target_id: player.playerId
+      target_id: player.playerId,
+      ability_index: 0
     });
   });
 });

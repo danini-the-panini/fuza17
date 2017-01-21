@@ -8,7 +8,13 @@ class GamesChannel < ApplicationCable::Channel
     time = Time.now
     intial_state = {
       x: (rand * 20.0) - 10.0,
-      y: (rand * 20.0) - 10.0
+      y: (rand * 20.0) - 10.0,
+      cooldowns: [
+        0.5
+      ],
+      last_hits: [
+        time.to_f
+      ]
     }
 
     ActionCable.server.broadcast channel_name,
@@ -55,12 +61,24 @@ class GamesChannel < ApplicationCable::Channel
   end
 
   def send_action(data)
+    player = game.players.find_by(user: current_user)
+    time = Time.now
+
     action = data['player_action']
     state = data['state']
 
-    time = Time.now
+    puts state
+    puts player.last_state
 
-    player = game.players.find_by(user: current_user)
+    if action['type'] == 'target_player'
+      ability_index = action['ability_index']
+      if time.to_f - player.last_state['last_hits'][ability_index] < player.last_state['cooldowns'][ability_index]
+        return
+      else
+        state['last_hits'][ability_index] = time.to_f
+      end
+    end
+
     player.update(last_action: action, last_action_time: time, last_state: state)
 
     ActionCable.server.broadcast channel_name,
