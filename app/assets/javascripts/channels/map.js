@@ -1,8 +1,9 @@
 const THREE = require('three');
+const OBJLoader = require('three-obj-loader');
+OBJLoader(THREE);
 
 module.exports = class Map extends THREE.Object3D {
   static WALL_GEOM = new THREE.BoxGeometry(1, 1, 1);
-  static WALL_MAT = new THREE.MeshPhongMaterial({ color: 0xff00ff });
 
   constructor() {
     super();
@@ -26,17 +27,43 @@ module.exports = class Map extends THREE.Object3D {
     floor.receiveShadow = true;
     this.add(floor);
 
-    for (let i = 0; i < img.width; i++) {
-      for (let j = 0; j < img.height; j++) {
-        const pixel = canvas.getContext('2d').getImageData(i, j, 1, 1).data;
-        if (pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0) {
-      		const mesh = new THREE.Mesh(Map.WALL_GEOM, Map.WALL_MAT);
-          mesh.position.set(i - img.width/2, j - img.height/2, 0.5);
-          mesh.castShadow = true;
-          mesh.receiveShadow = true;
-          this.add(mesh);
+    var loader = new THREE.OBJLoader();
+    loader.load('/assets/tree.obj', (tree) => { loader.load('/assets/tree_low.obj', (treeLow) => {
+      tree.traverse(child => {
+        child.castShadow = true;
+        child.receiveShadow = false;
+        if (child.material) {
+          child.material.color = new THREE.Color(0x00ff00);
+        }
+      });
+      treeLow.traverse(child => {
+        if (child.material) {
+          child.material.color = new THREE.Color(0x009900);
+        }
+      });
+      for (let i = 0; i < img.width; i++) {
+        for (let j = 0; j < img.height; j++) {
+          const pixel = canvas.getContext('2d').getImageData(i, j, 1, 1).data;
+          let treeType = 0;
+          if (pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0) {
+            treeType = 1;
+          }
+          if(pixel[0] === 0 && pixel[1] === 0 && pixel[2] > 0) {
+            treeType = Math.random() > 0.75 ? 2 : 0;
+          }
+
+          if (treeType > 0) {
+            const rotation = Math.random()*2*Math.PI;
+            const scale = 1.0 + Math.random()*0.7 - 0.5;
+        		const mesh = treeType === 1 ? tree.clone() : treeLow.clone();
+            mesh.rotation.x += 1.5708;
+            mesh.rotation.y == rotation;
+            mesh.scale.multiplyScalar(scale);
+            mesh.position.set(i - img.width/2, j - img.height/2, 0.5);
+            this.add(mesh);
+          }
         }
       }
-    }
+    }) });
   }
-}
+};

@@ -4,7 +4,7 @@ const Player = require('./player');
 
 module.exports = class GameEngine {
   static CAMERA_OFFSET = new THREE.Vector3(0, -5, 10)
-  static LIGHT_OFFSET = new THREE.Vector3(10, 3, 20)
+  static LIGHT_OFFSET = new THREE.Vector3(10, 4, 20)
 
   constructor(canvas) {
     this.canvas = canvas;
@@ -24,14 +24,14 @@ module.exports = class GameEngine {
     this.light = new THREE.DirectionalLight(0xffffff, 0.5);
     this.light.position.copy(GameEngine.LIGHT_OFFSET);
     this.light.castShadow = true;
-    this.light.shadow.camera.left = -20;
-    this.light.shadow.camera.right = 20;
-    this.light.shadow.camera.top = 20;
-    this.light.shadow.camera.bottom = -20;
+    this.light.shadow.camera.left = -30;
+    this.light.shadow.camera.right = 30;
+    this.light.shadow.camera.top = 30;
+    this.light.shadow.camera.bottom = -30;
     this.light.shadow.camera.far = 50;
     this.light.shadow.camera.near = 1;
     this.light.shadow.camera.up.set(0, 0, 1);
-    this.light.shadow.mapSize = new THREE.Vector2(2048, 2048);
+    this.light.shadow.mapSize = new THREE.Vector2(256, 256);
     this.light.target = new THREE.Object3D();
     this.scene.add(this.light);
 
