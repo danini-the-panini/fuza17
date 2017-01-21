@@ -41,20 +41,21 @@ $(document).on('turbolinks:load', () => {
       player.moveTo(action.point, getTimePassed(dataPlayer.time));
       break;
     case 'player_finished_moving':
-      player.position.set(dataPlayer.state.x, dataPlayer.state.y, 0.0);
+      player.moving = false;
       break;
-    case 'target_player': {
-      console.log(players);
-      const targetPlayer = players[action.target_id];
-      tmpVector3.set(0, 0, 0.5).add(player.position);
-      const projectile = new HomingMissile(tmpVector3, targetPlayer);
-      projectile.targetObject(targetPlayer, getTimePassed(dataPlayer.time));
-      gameEngine.addProjectile(projectile);
-      projectile.onFinishedMoving(() => {
-        gameEngine.removeProjectile(projectile);
-      });
+    case 'target_player':
+      {
+        player.moving = false;
+        const targetPlayer = players[action.target_id];
+        tmpVector3.set(0, 0, 0.5).add(player.position);
+        const projectile = new HomingMissile(tmpVector3, targetPlayer);
+        projectile.targetObject(targetPlayer, getTimePassed(dataPlayer.time));
+        gameEngine.addProjectile(projectile);
+        projectile.onFinishedMoving(() => {
+          gameEngine.removeProjectile(projectile);
+        });
+      }
       break;
-    }
     default:
       break;
     }
@@ -87,6 +88,7 @@ $(document).on('turbolinks:load', () => {
           App.game.sendAction({ type: 'player_finished_moving' });
         })
         gameEngine.addPlayer(thisPlayer);
+        gameEngine.setThisPlayer(thisPlayer);
         gameEngine.followPlayer(thisPlayer);
         break;
       case 'other_players':
@@ -124,16 +126,20 @@ $(document).on('turbolinks:load', () => {
   });
 
   gameEngine.onPlayerClicked(player => {
+    if (player === thisPlayer) return false;
     const time = +(new Date());
     const abilityIndex = 0;
-    if (time - thisPlayer.lastHits[abilityIndex] < thisPlayer.cooldowns[abilityIndex]) {
-      return;
-    }
+    const ability = thisPlayer.abilities[abilityIndex];
+    if (time - ability.last_hit < ability.cooldown) return false;
+    tmpVector3.copy(thisPlayer.position).sub(player.position);
+    if (tmpVector3.lengthSq() > ability.range * ability.range) return false;
+    thisPlayer.moving = false;
     App.game.sendAction({
       type: 'target_player',
       point: { x: thisPlayer.position.x, y: thisPlayer.position.y },
       target_id: player.playerId,
       ability_index: abilityIndex
     });
+    return true;
   });
 });

@@ -9,11 +9,13 @@ class GamesChannel < ApplicationCable::Channel
     intial_state = {
       x: (rand * 20.0) - 10.0,
       y: (rand * 20.0) - 10.0,
-      cooldowns: [
-        0.5
-      ],
-      last_hits: [
-        time.to_f
+      abilities: [
+        {
+          cooldown: 0.5,
+          type: 'target',
+          range: 10.0,
+          last_hit: time.to_f
+        }
       ]
     }
 
@@ -67,15 +69,13 @@ class GamesChannel < ApplicationCable::Channel
     action = data['player_action']
     state = data['state']
 
-    puts state
-    puts player.last_state
-
     if action['type'] == 'target_player'
       ability_index = action['ability_index']
-      if time.to_f - player.last_state['last_hits'][ability_index] < player.last_state['cooldowns'][ability_index]
+      ability = player.last_state['abilities'][ability_index]
+      if time.to_f - ability['last_hit'] < ability['cooldown']
         return
       else
-        state['last_hits'][ability_index] = time.to_f
+        state['abilities'][ability_index]['last_hit'] = time.to_f
       end
     end
 

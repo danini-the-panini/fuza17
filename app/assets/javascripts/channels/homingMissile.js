@@ -4,12 +4,13 @@ const moveToTarget = require('./moveToTarget');
 
 class HomingMissile extends THREE.Object3D {
   static SPEED = 0.05
+  static HALF_UP = new THREE.Vector3(0, 0, 0.5)
 
   constructor(startingPoint, target) {
     super();
 
-    const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-    const material = new THREE.MeshPhongMaterial( { color: 0x000000 } );
+    const geometry = new THREE.SphereGeometry(0.15);
+    const material = new THREE.MeshBasicMaterial( { color: 0x00e9ff } );
     const mesh = new THREE.Mesh( geometry, material );
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -29,7 +30,7 @@ class HomingMissile extends THREE.Object3D {
 
   update(delta) {
     if (this.moving) {
-      this.moveTarget.copy(this.getTargetSurface());
+      this.moveTarget.copy(this.getTargetSurface()).add(HomingMissile.HALF_UP);
       this.moveOverTime(delta);
     }
   }

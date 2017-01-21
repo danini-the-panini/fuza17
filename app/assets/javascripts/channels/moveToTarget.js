@@ -7,13 +7,18 @@ module.exports = function(klass) {
     this.finishMoveHandler = handler;
   }
 
+  klass.prototype.stopMoving = function() {
+    if (!this.moving) return;
+    this.moving = false;
+    if (this.finishMoveHandler) this.finishMoveHandler();
+  }
+
   klass.prototype.moveOverTime = function(delta) {
     const distanceToTargetSq = this.moveTarget.distanceToSquared(this.position);
     const minStep = this.speed * delta;
     if (distanceToTargetSq <= minStep * minStep) {
       this.position.copy(this.moveTarget);
-      this.moving = false;
-      if (this.finishMoveHandler) this.finishMoveHandler();
+      this.stopMoving();
     } else if (distanceToTargetSq > 0) {
       tmpVector3.copy(this.moveTarget).sub(this.position)
         .normalize().multiplyScalar(minStep);

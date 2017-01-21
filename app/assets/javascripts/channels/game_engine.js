@@ -90,12 +90,15 @@ module.exports = class GameEngine {
     );
 
     const floorIntersection = this.getIntersection(mousePosition, [this.floor]);
-    const playerIntersection = this.getIntersection(mousePosition, this.players.children);
+    const playerIntersection = this.getIntersection(mousePosition, this.getOtherPlayers());
+
+    let acknowledgePlayerHit = false;
 
     if (playerIntersection) {
       const player = playerIntersection.object.parent;
-      this.playerClickHandler(player);
-    } else if (floorIntersection) {
+      acknowledgePlayerHit = this.playerClickHandler(player);
+    }
+    if (!acknowledgePlayerHit && floorIntersection) {
       const point = floorIntersection.point;
       this.mouseClickHandler(point);
     }
@@ -128,6 +131,14 @@ module.exports = class GameEngine {
 
   removePlayer(player) {
     this.players.remove(player);
+  }
+
+  setThisPlayer(player) {
+    this.thisPlayer = player;
+  }
+
+  getOtherPlayers() {
+    return this.players.children.filter(player => player !== this.thisPlayer);
   }
 
   removeProjectile(projectile) {
