@@ -36,6 +36,17 @@ $(document).on('turbolinks:load', () => {
     return thisTime - thisStartTime;
   }
 
+  function respawnLater(player) {
+    setTimeout(() => {
+      if (!player.dead) return;
+      App.game.sendAction({
+        type: 'player_respawn',
+        player_id: player.playerId
+      });
+      respawnLater(player);
+    }, 1000);
+  }
+
   function navigateToNextPoint() {
     const nextPoint = navPath.shift();
     if (!nextPoint) {
@@ -89,10 +100,17 @@ $(document).on('turbolinks:load', () => {
       {
         if (!possibleHits[action.hit_id]) return;
         const targetPlayer = players[action.player_id];
-        targetPlayer
         console.log('HP: ', player.hp);
         delete possibleHits[action.hit_id];
       }
+      break;
+    case 'player_died':
+      player.die();
+      respawnLater(player);
+      break;
+    case 'player_respawn':
+      console.log("RESPAWNING PLAYER, ", player);
+      player.respawn(dataPlayer.state);
       break;
     default:
       break;
@@ -119,7 +137,7 @@ $(document).on('turbolinks:load', () => {
         }
         break;
       case 'player_setup':
-        thisPlayer = players[playerId] = new Player(data.player.id, data.player.state);
+        thisPlayer = players[playerId] = new Player(playerId, data.player.state);
         const thisTime = +(new Date());
         timeOffset = (data.player.time * 1000.0) - thisTime;
         thisPlayer.onFinishedMoving(() => {

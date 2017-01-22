@@ -76,13 +76,16 @@ class GamesChannel < ApplicationCable::Channel
 
     case action['type']
     when 'player_started_moving'
+      return if state['dead']
       return unless map.can_traverse?(action['point']['x'], action['point']['y'])
       state['x'] = action['position']['x']
       state['y'] = action['position']['y']
     when 'player_finished_moving'
+      return if state['dead']
       state['x'] = action['position']['x']
       state['y'] = action['position']['y']
     when 'target_player'
+      return if state['dead']
       state['x'] = action['point']['x']
       state['y'] = action['point']['y']
       ability_index = action['ability_index']
@@ -123,10 +126,58 @@ class GamesChannel < ApplicationCable::Channel
                                    },
                                    action: action
 
+      if target_state['hp'] <= 0.0
+        target_state['dead'] = true
+        target_state['death_time'] = time.to_f
+        ActionCable.server.broadcast channel_name,
+                                     type: 'player_action',
+                                     player: {
+                                       id: target_player.user_id,
+                                       name: target_player.user.name,
+                                       state: target_state,
+                                       time: time.to_f
+                                     },
+                                     action: {
+                                       type: 'player_died'
+                                     }
+        game.hit_registers.where(hit_player_id: target_player.user_id).destroy_all
+      end
+
       target_player.update(last_state: target_state)
 
       game.hit_registers.where(hit_player_id: target_player.user_id,
                                             hit_identifier: hit_id).destroy_all
+      return
+    when 'player_respawn'
+      target_player = game.players.find_by(user_id: action['player_id'])
+      target_state = target_player.last_state
+
+      return unless target_state['dead']
+      return unless time.to_f - target_state['death_time'] >= Player::SPAWN_TIME
+
+      target_state['dead'] = false
+
+      team_index = rand > 0.5 ? 0 : 1
+      spawn_x, spawn_y = map.spawn_point(team_index)
+
+      target_state['x'] = spawn_x
+      target_state['y'] = spawn_y
+
+      target_state['hp'] = 100.0
+
+      ActionCable.server.broadcast channel_name,
+                                   type: 'player_action',
+                                   player: {
+                                       id: target_player.user_id,
+                                       name: target_player.user.name,
+                                       state: target_state,
+                                       time: time.to_f
+                                   },
+                                   action: {
+                                     type: 'player_respawn'
+                                   }
+
+      target_player.update(last_state: target_state)
       return
     else
     end

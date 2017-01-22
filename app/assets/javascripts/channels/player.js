@@ -46,6 +46,17 @@ class Player extends THREE.Object3D {
       this.moveOverTime(delta);
     }
   }
+
+  die() {
+    this.visible = false;
+    this.dead = true;
+  }
+
+  respawn(state) {
+    this.visible = true;
+    this.dead = false;
+    this.setState(state);
+  }
 };
 
 moveToTarget(Player);
