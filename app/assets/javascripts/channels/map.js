@@ -11,9 +11,10 @@ module.exports = class Map extends THREE.Object3D {
   constructor() {
     super();
 
-    this.computeGraph();
     this.addFloor();
-    this.addTrees();
+    this.computeGraph(() => {
+      this.addTrees();
+    });
   }
 
   addFloor() {
@@ -32,75 +33,70 @@ module.exports = class Map extends THREE.Object3D {
   }
 
   addTrees() {
-    const img = document.getElementById('noise-image');
-    const canvas = document.createElement('canvas');
-    canvas.width = img.width;
-    canvas.height = img.height;
-    canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height);
+    this.loadImage('/assets/noise.png', (img, canvas) => {
+      let loader = new THREE.OBJLoader();
+      loader.load('/assets/tree.obj', (tree) => { loader.load('/assets/tree_low.obj', (treeLow) => {
+        tree.traverse(child => {
+          child.castShadow = true;
+          child.receiveShadow = false;
+          if (child.material) {
+            child.material.color = new THREE.Color(0x00ff00);
+          }
+        });
+        treeLow.traverse(child => {
+          if (child.material) {
+            child.material.color = new THREE.Color(0x009900);
+          }
+        });
+        for (let i = 0; i < this.mapData.length; i++) {
+          for (let j = 0; j < this.mapData[i].length; j++) {
+            let treeType = this.mapData[i][j];
+            const noise = canvas.getContext('2d').getImageData(i, j, 1, 1).data[0]/256;
 
-    let loader = new THREE.OBJLoader();
-    loader.load('/assets/tree.obj', (tree) => { loader.load('/assets/tree_low.obj', (treeLow) => {
-      tree.traverse(child => {
-        child.castShadow = true;
-        child.receiveShadow = false;
-        if (child.material) {
-          child.material.color = new THREE.Color(0x00ff00);
-        }
-      });
-      treeLow.traverse(child => {
-        if (child.material) {
-          child.material.color = new THREE.Color(0x009900);
-        }
-      });
-      for (let i = 0; i < this.mapData.length; i++) {
-        for (let j = 0; j < this.mapData[i].length; j++) {
-          let treeType = this.mapData[i][j];
-          const noise = canvas.getContext('2d').getImageData(i, j, 1, 1).data[0]/256;
-
-          if (treeType === 1 || treeType === 2) {
-            const rotation = noise*2*Math.PI;
-            const scale = 1.0 + noise*0.7 - 0.5;
-        		const mesh = treeType === 1 ? tree.clone() : treeLow.clone();
-            mesh.rotation.x += 1.5708;
-            mesh.rotation.y == rotation;
-            mesh.scale.multiplyScalar(scale);
-            mesh.position.set(i - this.mapData.length/2, j - this.mapData[i].length/2, 0.5);
-            this.add(mesh);
+            if (treeType === 1 || treeType === 2) {
+              const rotation = noise*2*Math.PI;
+              const scale = 1.0 + noise*0.7 - 0.5;
+          		const mesh = treeType === 1 ? tree.clone() : treeLow.clone();
+              mesh.rotation.x += 1.5708;
+              mesh.rotation.y == rotation;
+              mesh.scale.multiplyScalar(scale);
+              mesh.position.set(i - this.mapData.length/2, j - this.mapData[i].length/2, 0.5);
+              this.add(mesh);
+            }
           }
         }
-      }
-    }) });
+      }) });
+    });
   }
 
-  computeGraph() {
-    const img = document.getElementById('map-image');
-    const canvas = document.createElement('canvas');
-    canvas.width = img.width;
-    canvas.height = img.height;
-    canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height);
+  computeGraph(callback) {
+    this.loadImage('/assets/map.png', (img, canvas) => {
 
-    this.mapData = [];
+      this.mapData = [];
 
-    for (let i = 0; i < img.width; i++) {
-      this.mapData[i] = [];
-      for (let j = 0; j < img.height; j++) {
-        const pixel = canvas.getContext('2d').getImageData(i, j, 1, 1).data;
-        let treeType = 0;
-        if (pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0) {
-          treeType = 1;
-        }
-        if(pixel[0] === 0 && pixel[1] === 0 && pixel[2] > 0) {
-          treeType = 2;
-        }
-        if(pixel[0] > 0 && pixel[1] === 0 && pixel[2] > 0) {
-          treeType = 3;
-        }
+      for (let i = 0; i < img.width; i++) {
+        this.mapData[i] = [];
+        for (let j = 0; j < img.height; j++) {
+          const pixel = canvas.getContext('2d').getImageData(i, j, 1, 1).data;
+          let treeType = 0;
+          if (pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0) {
+            treeType = 1;
+          }
+          if(pixel[0] === 0 && pixel[1] === 0 && pixel[2] > 0) {
+            treeType = 2;
+          }
+          if(pixel[0] > 0 && pixel[1] === 0 && pixel[2] > 0) {
+            treeType = 3;
+          }
 
-        this.mapData[i][j] = treeType;
+          this.mapData[i][j] = treeType;
+        }
       }
-    }
 
-    this.navGraph = new Graph(this.mapData.map(row => row.map(v => v ? 9999 : 1)));
+      this.navGraph = new Graph(this.mapData.map(row => row.map(v => v ? 9999 : 1)));
+
+      callback();
+    });
   }
 
   isTree(i, j) {
@@ -109,6 +105,18 @@ module.exports = class Map extends THREE.Object3D {
 
   isTreeOrBuffer(i, j) {
     return this.isTree(i) || this.mapData[i][j] === 3;
+  }
+
+  loadImage(path, callback) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height);
+      callback(img, canvas);
+    };
+    img.src = path;
   }
 
   getPath(from, to) {

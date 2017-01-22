@@ -1,6 +1,3 @@
 .game
   h1.game__title= @game.name
   canvas#game-canvas.game__canvas(data-game-id="#{@game.id}", data-player-id="#{current_user.id}")
-
-  = image_tag 'map.png', style: 'display: none', id: 'map-image'
-  = image_tag 'noise.png', style: 'display: none', id: 'noise-image'
