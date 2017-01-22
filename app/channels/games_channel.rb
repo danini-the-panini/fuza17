@@ -29,17 +29,16 @@ class GamesChannel < ApplicationCable::Channel
 
     player = game.players.find_or_create_by(user_id: current_user.id) do |p|
       p.last_state = initial_state
+
+      ActionCable.server.broadcast channel_name,
+                                   type: 'player_joined',
+                                   player: {
+                                     id: current_user.id,
+                                     name: current_user.name,
+                                     time: time.to_f,
+                                     state: p.last_state
+                                   }
     end
-
-    ActionCable.server.broadcast channel_name,
-                                 type: 'player_joined',
-                                 player: {
-                                   id: current_user.id,
-                                   name: current_user.name,
-                                   time: time.to_f,
-                                   state: player.last_state
-                                 }
-
 
     ActionCable.server.broadcast user_channel_name,
                                  type: 'player_setup',
