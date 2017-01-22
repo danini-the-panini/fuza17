@@ -38,7 +38,7 @@ module.exports = class Map extends THREE.Object3D {
     canvas.height = img.height;
     canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height);
 
-    var loader = new THREE.OBJLoader();
+    let loader = new THREE.OBJLoader();
     loader.load('/assets/tree.obj', (tree) => { loader.load('/assets/tree_low.obj', (treeLow) => {
       tree.traverse(child => {
         child.castShadow = true;
@@ -140,39 +140,6 @@ module.exports = class Map extends THREE.Object3D {
     return this.trimPath(path);
   }
 
-  getDiscreetBlocks(from, to) {
-    var coordinatesArray = [];
-    // Translate coordinates
-    var x1 = Math.floor(from.x + this.mapData.length/2);
-    var y1 = Math.floor(from.y + this.mapData[0].length/2);
-    var x2 = Math.floor(to.x + this.mapData.length/2);
-    var y2 = Math.floor(to.y + this.mapData[0].length/2);
-    // Define differences and error check
-    var dx = Math.abs(x2 - x1);
-    var dy = Math.abs(y2 - y1);
-    var sx = (x1 < x2) ? 1 : -1;
-    var sy = (y1 < y2) ? 1 : -1;
-    var err = dx - dy;
-    // Set first coordinates
-    coordinatesArray.push(new THREE.Vector2(x1, y1));
-    // Main loop
-    while (!((x1 == x2) && (y1 == y2))) {
-      var e2 = err << 1;
-      if (e2 > -dy) {
-        err -= dy;
-        x1 += sx;
-      }
-      if (e2 < dx) {
-        err += dx;
-        y1 += sy;
-      }
-      // Set coordinates
-      coordinatesArray.push(new THREE.Vector2(x1, y1));
-    }
-    // Return the result
-    return coordinatesArray;
-  }
-
   lineIntersectsTree(from, to) {
     const blocks = this.getDiscreetBlocks(from, to);
 
@@ -181,29 +148,6 @@ module.exports = class Map extends THREE.Object3D {
     }
 
     return false;
-  }
-
-  getDebugBlocks(path) {
-    const pathBlocks = new THREE.Group();
-    for (let i = 0; i < path.length - 1; i++) {
-      pathBlocks.add(this.getDebugBlocksForLine(path[i], path[i+1]));
-    }
-    return pathBlocks;
-  }
-
-  getDebugBlocksForLine(from, to) {
-    const blocks = this.getDiscreetBlocks(from, to);
-    const blocksGroup = new THREE.Group();
-
-    for (let i = 0; i < blocks.length; i++) {
-      const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({
-        color: 0xff00ff, wireframe: true
-      }));
-      box.position.set(blocks[i].x - this.mapData.length/2, blocks[i].y - this.mapData[0].length/2, 0.5);
-      blocksGroup.add(box);
-    }
-
-    return blocksGroup;
   }
 
   trimPath(path) {
@@ -228,5 +172,61 @@ module.exports = class Map extends THREE.Object3D {
     newPath.push(end);
 
     return newPath;
+  }
+
+  getDiscreetBlocks(from, to) {
+    let coordinatesArray = [];
+    // Translate coordinates
+    let x1 = Math.floor(from.x + this.mapData.length/2);
+    let y1 = Math.floor(from.y + this.mapData[0].length/2);
+    let x2 = Math.floor(to.x + this.mapData.length/2);
+    let y2 = Math.floor(to.y + this.mapData[0].length/2);
+    // Define differences and error check
+    let dx = Math.abs(x2 - x1);
+    let dy = Math.abs(y2 - y1);
+    let sx = (x1 < x2) ? 1 : -1;
+    let sy = (y1 < y2) ? 1 : -1;
+    let err = dx - dy;
+    // Set first coordinates
+    coordinatesArray.push(new THREE.Vector2(x1, y1));
+    // Main loop
+    while (!((x1 == x2) && (y1 == y2))) {
+      let e2 = err << 1;
+      if (e2 > -dy) {
+        err -= dy;
+        x1 += sx;
+      }
+      if (e2 < dx) {
+        err += dx;
+        y1 += sy;
+      }
+      // Set coordinates
+      coordinatesArray.push(new THREE.Vector2(x1, y1));
+    }
+    // Return the result
+    return coordinatesArray;
+  }
+
+  getDebugBlocks(path) {
+    const pathBlocks = new THREE.Group();
+    for (let i = 0; i < path.length - 1; i++) {
+      pathBlocks.add(this.getDebugBlocksForLine(path[i], path[i+1]));
+    }
+    return pathBlocks;
+  }
+
+  getDebugBlocksForLine(from, to) {
+    const blocks = this.getDiscreetBlocks(from, to);
+    const blocksGroup = new THREE.Group();
+
+    for (let i = 0; i < blocks.length; i++) {
+      const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({
+        color: 0xff00ff, wireframe: true
+      }));
+      box.position.set(blocks[i].x - this.mapData.length/2, blocks[i].y - this.mapData[0].length/2, 0.5);
+      blocksGroup.add(box);
+    }
+
+    return blocksGroup;
   }
 };

@@ -9,11 +9,11 @@ module.exports = class Graph {
   constructor(gridIn) {
     this.nodes = [];
     this.grid = [];
-    for (var x = 0; x < gridIn.length; x++) {
+    for (let x = 0; x < gridIn.length; x++) {
       this.grid[x] = [];
 
-      for (var y = 0, row = gridIn[x]; y < row.length; y++) {
-        var node = new GridNode(x, y, row[y]);
+      for (let y = 0, row = gridIn[x]; y < row.length; y++) {
+        let node = new GridNode(x, y, row[y]);
         this.grid[x][y] = node;
         this.nodes.push(node);
       }
@@ -23,13 +23,13 @@ module.exports = class Graph {
 
   init() {
     this.dirtyNodes = [];
-    for (var i = 0; i < this.nodes.length; i++) {
+    for (let i = 0; i < this.nodes.length; i++) {
       AStar.cleanNode(this.nodes[i]);
     }
   }
 
   cleanDirty() {
-    for (var i = 0; i < this.dirtyNodes.length; i++) {
+    for (let i = 0; i < this.dirtyNodes.length; i++) {
       AStar.cleanNode(this.dirtyNodes[i]);
     }
     this.dirtyNodes = [];
@@ -40,10 +40,10 @@ module.exports = class Graph {
   }
 
   neighbors(node) {
-    var ret = [];
-    var x = node.x;
-    var y = node.y;
-    var grid = this.grid;
+    let ret = [];
+    let x = node.x;
+    let y = node.y;
+    let grid = this.grid;
 
     // West
     if (grid[x - 1] && grid[x - 1][y]) {
@@ -89,12 +89,12 @@ module.exports = class Graph {
   }
 
   toString() {
-    var graphString = [];
-    var nodes = this.grid;
-    for (var x = 0; x < nodes.length; x++) {
-      var rowDebug = [];
-      var row = nodes[x];
-      for (var y = 0; y < row.length; y++) {
+    let graphString = [];
+    let nodes = this.grid;
+    for (let x = 0; x < nodes.length; x++) {
+      let rowDebug = [];
+      let row = nodes[x];
+      for (let y = 0; y < row.length; y++) {
         rowDebug.push(row[y].weight);
       }
       graphString.push(rowDebug.join(" "));
