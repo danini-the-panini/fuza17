@@ -184,6 +184,15 @@ $(document).on('turbolinks:load', () => {
         thisPlayer.onFinishedMoving(() => {
           navigateToNextPoint();
         })
+        if (thisPlayer.state.dead) {
+          thisPlayer.die();
+          respawnLater(thisPlayer);
+          deathText.text('You are dead!');
+          deathOverlay.show();
+          spawnTime = 5000;
+          deathCounter.text('');
+        }
+        updateScoreCard();
         gameEngine.addPlayer(thisPlayer);
         gameEngine.setThisPlayer(thisPlayer);
         gameEngine.followPlayer(thisPlayer);
