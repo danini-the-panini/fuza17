@@ -39,11 +39,13 @@ $(document).on('turbolinks:load', () => {
     return thisTime - thisStartTime;
   }
 
+  let spawnTime;
+
   function respawnLater(player) {
     setTimeout(() => {
       if (!player.dead) return;
       const timePassed = getTimePassed(player.state.death_time);
-      deathCounter.text(Math.round((5000 - timePassed) / 1000));
+      deathCounter.text(Math.round((spawnTime - timePassed) / 1000));
       App.game.sendAction({
         type: 'player_respawn',
         player_id: player.playerId
@@ -111,10 +113,11 @@ $(document).on('turbolinks:load', () => {
       break;
     case 'player_died':
       player.die();
-      respawnLater(player);
       if (player === thisPlayer) {
+        respawnLater(player);
         deathOverlay.show();
-        deathCounter.text('5');
+        spawnTime = parseFloat(action.spawn_time, 10) * 1000;
+        deathCounter.text(Math.floor(spawnTime / 1000));
       }
       break;
     case 'player_respawn':

@@ -138,7 +138,8 @@ class GamesChannel < ApplicationCable::Channel
                                        time: time.to_f
                                      },
                                      action: {
-                                       type: 'player_died'
+                                       type: 'player_died',
+                                       spawn_time: Player::SPAWN_TIME
                                      }
         game.hit_registers.where(hit_player_id: target_player.user_id).destroy_all
       end
