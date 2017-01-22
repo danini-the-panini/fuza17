@@ -32,6 +32,12 @@ module.exports = class Map extends THREE.Object3D {
   }
 
   addTrees() {
+    const img = document.getElementById('noise-image');
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height);
+
     var loader = new THREE.OBJLoader();
     loader.load('/assets/tree.obj', (tree) => { loader.load('/assets/tree_low.obj', (treeLow) => {
       tree.traverse(child => {
@@ -49,10 +55,11 @@ module.exports = class Map extends THREE.Object3D {
       for (let i = 0; i < this.mapData.length; i++) {
         for (let j = 0; j < this.mapData[i].length; j++) {
           let treeType = this.mapData[i][j];
+          const noise = canvas.getContext('2d').getImageData(i, j, 1, 1).data[0]/256;
 
           if (treeType === 1 || treeType === 2) {
-            const rotation = Math.random()*2*Math.PI;
-            const scale = 1.0 + Math.random()*0.7 - 0.5;
+            const rotation = noise*2*Math.PI;
+            const scale = 1.0 + noise*0.7 - 0.5;
         		const mesh = treeType === 1 ? tree.clone() : treeLow.clone();
             mesh.rotation.x += 1.5708;
             mesh.rotation.y == rotation;
