@@ -10,7 +10,7 @@ class GamesChannel < ApplicationCable::Channel
     spawn_x, spawn_y = map.spawn_point(team_index)
 
     time = Time.now
-    intial_state = {
+    initial_state = {
       x: spawn_x,
       y: spawn_y,
       hp: 100.0,
@@ -27,13 +27,17 @@ class GamesChannel < ApplicationCable::Channel
       ]
     }
 
+    player = game.players.find_or_create_by(user_id: current_user.id) do |p|
+      p.last_state = initial_state
+    end
+
     ActionCable.server.broadcast channel_name,
                                  type: 'player_joined',
                                  player: {
                                    id: current_user.id,
                                    name: current_user.name,
                                    time: time.to_f,
-                                   state: intial_state
+                                   state: player.last_state
                                  }
 
 
@@ -43,10 +47,10 @@ class GamesChannel < ApplicationCable::Channel
                                    id: current_user.id,
                                    name: current_user.name,
                                    time: time.to_f,
-                                   state: intial_state
+                                   state: player.last_state
                                  }
 
-    players = game.players.map do |p|
+    players = game.players.where.not(user_id: current_user.id).map do |p|
       {
         id: p.user.id,
         name: p.user.name,
@@ -59,13 +63,23 @@ class GamesChannel < ApplicationCable::Channel
     ActionCable.server.broadcast user_channel_name,
                                  type: 'other_players',
                                  players: players
-
-    game.players.create(user: current_user, last_state: intial_state)
   end
 
   def unsubscribed
     player = game.players.find_by(user: current_user)
-    player.destroy
+
+    ActionCable.server.broadcast channel_name,
+                                 type: 'player_action',
+                                 player: {
+                                   id: player.user_id,
+                                   name: player.user.name,
+                                   state: player.last_state,
+                                   time: Time.now.to_f
+                                 },
+                                 action: {
+                                   type: 'player_finished_moving',
+                                   position: { x: player.last_state['x'], y: player.last_state['y'] }
+                                 }
 
     ActionCable.server.broadcast channel_name,
                                  type: 'player_left',
