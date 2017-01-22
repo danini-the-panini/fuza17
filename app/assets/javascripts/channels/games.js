@@ -123,6 +123,7 @@ $(document).on('turbolinks:load', () => {
           deathOverlay.show();
           spawnTime = parseFloat(action.spawn_time, 10) * 1000;
           deathCounter.text(Math.floor(spawnTime / 1000));
+          gameEngine.followPlayer(killer);
         }
       }
       break;
@@ -130,6 +131,7 @@ $(document).on('turbolinks:load', () => {
       player.respawn(dataPlayer.state);
       if (player === thisPlayer) {
         deathOverlay.hide();
+        gameEngine.followPlayer(thisPlayer);
       }
       break;
     default:
