@@ -67,6 +67,7 @@ class GamesChannel < ApplicationCable::Channel
 
   def unsubscribed
     player = game.players.find_by(user: current_user)
+    return if player.nil?
 
     ActionCable.server.broadcast channel_name,
                                  type: 'player_action',
@@ -80,10 +81,6 @@ class GamesChannel < ApplicationCable::Channel
                                    type: 'player_finished_moving',
                                    position: { x: player.last_state['x'], y: player.last_state['y'] }
                                  }
-
-    ActionCable.server.broadcast channel_name,
-                                 type: 'player_left',
-                                 player: { id: current_user.id }
   end
 
   def send_action(action)
@@ -226,6 +223,15 @@ class GamesChannel < ApplicationCable::Channel
                                  action: action
 
     player.update(last_action: action, last_action_time: time, last_state: state)
+  end
+
+  def leave_game
+    player = game.players.find_by(user: current_user)
+    player.destroy
+
+    ActionCable.server.broadcast channel_name,
+                                 type: 'player_left',
+                                 player: { id: current_user.id }
   end
 
   private

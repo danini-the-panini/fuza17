@@ -15,6 +15,12 @@ $(document).on('turbolinks:load', () => {
   const deathText = $('#death-text');
   const scoreCardBody = $('#score-card tbody');
 
+  const gameMenu = $('#menu');
+  const leaveButton = $('#leave-button');
+  const resumeButton = $('#resume-button');
+
+  const menuButton = $('#menu-button');
+
   const canvas = $('#game-canvas');
 
   if (canvas.length === 0) return;
@@ -195,9 +201,14 @@ $(document).on('turbolinks:load', () => {
         updateScoreCard();
         break;
       case 'player_left':
-        gameEngine.removePlayer(players[data.player.id]);
-        delete players[data.player.id];
-        updateScoreCard();
+        const player = players[data.player.id];
+        if (player === thisPlayer) {
+          Turbolinks.visit('..');
+        } else {
+          gameEngine.removePlayer(player);
+          delete players[data.player.id];
+          updateScoreCard();
+        }
         break;
       case 'player_action':
         performAction(data.action, data.player, players[data.player.id]);
@@ -209,6 +220,10 @@ $(document).on('turbolinks:load', () => {
 
     sendAction(action) {
       this.perform('send_action', action);
+    } ,
+
+    leaveGame() {
+      this.perform('leave_game', {});
     }
   });
 
@@ -263,4 +278,22 @@ $(document).on('turbolinks:load', () => {
     });
     return true;
   });
+
+  $(document).keyup(function(e) {
+    if (e.keyCode == 27) { // escape key maps to keycode `27`
+      gameMenu.toggle();
+    }
+  });
+
+  leaveButton.on('click', () => {
+    App.game.leaveGame();
+  });
+
+  resumeButton.on('click', () => {
+    gameMenu.toggle();
+  });
+
+  menuButton.on('click', () => {
+    gameMenu.toggle();
+  })
 });
