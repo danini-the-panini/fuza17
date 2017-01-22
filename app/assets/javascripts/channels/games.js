@@ -10,6 +10,9 @@ $(document).on('turbolinks:load', () => {
     App.game.unsubscribe();
   }
 
+  const deathOverlay = $('#death-overlay');
+  const deathCounter = $('#death-counter');
+
   const canvas = $('#game-canvas');
 
   if (canvas.length === 0) return;
@@ -39,6 +42,8 @@ $(document).on('turbolinks:load', () => {
   function respawnLater(player) {
     setTimeout(() => {
       if (!player.dead) return;
+      const timePassed = getTimePassed(player.state.death_time);
+      deathCounter.text(Math.round((5000 - timePassed) / 1000));
       App.game.sendAction({
         type: 'player_respawn',
         player_id: player.playerId
@@ -107,10 +112,16 @@ $(document).on('turbolinks:load', () => {
     case 'player_died':
       player.die();
       respawnLater(player);
+      if (player === thisPlayer) {
+        deathOverlay.show();
+        deathCounter.text('5');
+      }
       break;
     case 'player_respawn':
-      console.log("RESPAWNING PLAYER, ", player);
       player.respawn(dataPlayer.state);
+      if (player === thisPlayer) {
+        deathOverlay.hide();
+      }
       break;
     default:
       break;
