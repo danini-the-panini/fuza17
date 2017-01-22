@@ -12,6 +12,7 @@ $(document).on('turbolinks:load', () => {
 
   const deathOverlay = $('#death-overlay');
   const deathCounter = $('#death-counter');
+  const deathText = $('#death-text');
 
   const canvas = $('#game-canvas');
 
@@ -112,12 +113,17 @@ $(document).on('turbolinks:load', () => {
       }
       break;
     case 'player_died':
-      player.die();
-      if (player === thisPlayer) {
-        respawnLater(player);
-        deathOverlay.show();
-        spawnTime = parseFloat(action.spawn_time, 10) * 1000;
-        deathCounter.text(Math.floor(spawnTime / 1000));
+      {
+        const killer = players[action.killer_id];
+        killer.setState(action.killer_state);
+        player.die();
+        if (player === thisPlayer) {
+          respawnLater(player);
+          deathText.text(`${killer.name} killed you!`);
+          deathOverlay.show();
+          spawnTime = parseFloat(action.spawn_time, 10) * 1000;
+          deathCounter.text(Math.floor(spawnTime / 1000));
+        }
       }
       break;
     case 'player_respawn':
@@ -146,12 +152,12 @@ $(document).on('turbolinks:load', () => {
       switch(data.type) {
       case 'player_joined':
         if (data.player.id !== playerId) {
-          players[data.player.id] = new Player(data.player.id, data.player.state);
+          players[data.player.id] = new Player(data.player.id, data.player.name, data.player.state);
           gameEngine.addPlayer(players[data.player.id]);
         }
         break;
       case 'player_setup':
-        thisPlayer = players[playerId] = new Player(playerId, data.player.state);
+        thisPlayer = players[playerId] = new Player(playerId, data.player.name, data.player.state);
         const thisTime = +(new Date());
         timeOffset = (data.player.time * 1000.0) - thisTime;
         thisPlayer.onFinishedMoving(() => {
@@ -163,7 +169,7 @@ $(document).on('turbolinks:load', () => {
         break;
       case 'other_players':
         data.players.forEach(p => {
-          players[p.id] = new Player(p.id, p.state);
+          players[p.id] = new Player(p.id, p.name, p.state);
           gameEngine.addPlayer(players[p.id]);
 
           if (p.action) {

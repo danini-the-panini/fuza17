@@ -5,10 +5,11 @@ class Player extends THREE.Object3D {
   static SPEED = 0.01
   static RADIUS = 0.5
 
-  constructor(playerId, state) {
+  constructor(playerId, name, state) {
     super();
 
     this.playerId = playerId;
+    this.name = name;
 		const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1),
                                 new THREE.MeshPhongMaterial({ color: 0xff00ff }));
     mesh.position.z = 0.5;

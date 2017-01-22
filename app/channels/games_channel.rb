@@ -14,6 +14,8 @@ class GamesChannel < ApplicationCable::Channel
       x: spawn_x,
       y: spawn_y,
       hp: 100.0,
+      kills: 0,
+      deaths: 0,
       abilities: [
         {
           cooldown: 0.5,
@@ -95,6 +97,8 @@ class GamesChannel < ApplicationCable::Channel
       else
         state['abilities'][ability_index]['last_hit'] = time.to_f
         action['hit_id'] = SecureRandom.hex(10)
+
+        Hit.create(source_id: current_user.id, hit_identifier: action['hit_id'], ability_index: ability_index)
       end
     when 'player_hit'
       target_player = game.players.find_by(user_id: action['player_id'])
@@ -103,6 +107,7 @@ class GamesChannel < ApplicationCable::Channel
       consensus_agreement = (game.players.count * 0.75).ceil
 
       hit_id = action['hit_id']
+      hit = Hit.find_by(hit_identifier: hit_id)
       game.hit_registers.find_or_create_by(hit_player_id: target_player.user_id,
                                            reporting_player_id: current_user.id,
                                            hit_identifier: hit_id)
@@ -128,7 +133,13 @@ class GamesChannel < ApplicationCable::Channel
 
       if target_state['hp'] <= 0.0
         target_state['dead'] = true
+        target_state['deaths'] += 1
         target_state['death_time'] = time.to_f
+
+        killer = Player.find_by(user_id: hit.source_id)
+        killer_state = killer.last_state
+        killer_state['kills'] += 1
+
         ActionCable.server.broadcast channel_name,
                                      type: 'player_action',
                                      player: {
@@ -139,9 +150,13 @@ class GamesChannel < ApplicationCable::Channel
                                      },
                                      action: {
                                        type: 'player_died',
-                                       spawn_time: Player::SPAWN_TIME
+                                       spawn_time: Player::SPAWN_TIME,
+                                       killer_id: hit.source_id,
+                                       killer_state: killer_state
                                      }
         game.hit_registers.where(hit_player_id: target_player.user_id).destroy_all
+
+        killer.update(last_state: killer_state)
       end
 
       target_player.update(last_state: target_state)
