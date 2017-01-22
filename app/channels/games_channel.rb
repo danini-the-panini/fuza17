@@ -40,6 +40,8 @@ class GamesChannel < ApplicationCable::Channel
     ActionCable.server.broadcast user_channel_name,
                                  type: 'player_setup',
                                  player: {
+                                   id: current_user.id,
+                                   name: current_user.name,
                                    time: time.to_f,
                                    state: intial_state
                                  }
@@ -104,7 +106,8 @@ class GamesChannel < ApplicationCable::Channel
       target_player = game.players.find_by(user_id: action['player_id'])
       target_state = target_player.last_state
 
-      consensus_agreement = (game.players.count * 0.75).ceil
+      # consensus_agreement = (game.players.count * 0.75).ceil
+      consensus_agreement = 1
 
       hit_id = action['hit_id']
       hit = Hit.find_by(hit_identifier: hit_id)

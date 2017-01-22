@@ -13,6 +13,7 @@ $(document).on('turbolinks:load', () => {
   const deathOverlay = $('#death-overlay');
   const deathCounter = $('#death-counter');
   const deathText = $('#death-text');
+  const scoreCardBody = $('#score-card tbody');
 
   const canvas = $('#game-canvas');
 
@@ -38,6 +39,16 @@ $(document).on('turbolinks:load', () => {
     const thisTime = +(new Date());
     const thisStartTime = (startTime * 1000.0) - timeOffset;
     return thisTime - thisStartTime;
+  }
+
+  function updateScoreCard() {
+    let html = '';
+    for (let id in players) {
+      if (!players.hasOwnProperty(id)) return;
+      const player = players[id];
+      html += `<tr><td>${player.name}</td><td>${player.state.kills}</td><td>${player.state.deaths}</td></tr>`;
+    }
+    scoreCardBody.html(html);
   }
 
   let spawnTime;
@@ -125,6 +136,7 @@ $(document).on('turbolinks:load', () => {
           deathCounter.text(Math.floor(spawnTime / 1000));
           gameEngine.followPlayer(killer);
         }
+        updateScoreCard();
       }
       break;
     case 'player_respawn':
@@ -157,6 +169,7 @@ $(document).on('turbolinks:load', () => {
           players[data.player.id] = new Player(data.player.id, data.player.name, data.player.state);
           gameEngine.addPlayer(players[data.player.id]);
         }
+        updateScoreCard();
         break;
       case 'player_setup':
         thisPlayer = players[playerId] = new Player(playerId, data.player.name, data.player.state);
@@ -168,6 +181,7 @@ $(document).on('turbolinks:load', () => {
         gameEngine.addPlayer(thisPlayer);
         gameEngine.setThisPlayer(thisPlayer);
         gameEngine.followPlayer(thisPlayer);
+        updateScoreCard();
         break;
       case 'other_players':
         data.players.forEach(p => {
@@ -178,10 +192,12 @@ $(document).on('turbolinks:load', () => {
             performAction(p.action, p, players[p.id]);
           }
         });
+        updateScoreCard();
         break;
       case 'player_left':
         gameEngine.removePlayer(players[data.player.id]);
         delete players[data.player.id];
+        updateScoreCard();
         break;
       case 'player_action':
         performAction(data.action, data.player, players[data.player.id]);

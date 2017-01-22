@@ -1,6 +1,13 @@
 .game
-  h1.game__title= @game.name
   canvas#game-canvas.game__canvas(data-game-id="#{@game.id}", data-player-id="#{current_user.id}")
+
+  table#score-card
+    thead
+      tr
+        th Score
+        th ⚔
+        th 💀
+    tbody
 
   #death-overlay style="display:none"
     #death-text
