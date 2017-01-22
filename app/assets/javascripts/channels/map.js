@@ -107,6 +107,10 @@ module.exports = class Map extends THREE.Object3D {
     return this.mapData[i][j] === 1 || this.mapData[i][j] === 2;
   }
 
+  isTreeOrBuffer(i, j) {
+    return this.isTree(i) || this.mapData[i][j] === 3;
+  }
+
   getPath(from, to) {
     const startI = Math.floor(from.x + this.mapData.length/2);
     const startJ = Math.floor(from.y + this.mapData[0].length/2);
@@ -133,6 +137,96 @@ module.exports = class Map extends THREE.Object3D {
       path[path.length - 1].copy(to);
     }
 
-    return path;
+    return this.trimPath(path);
+  }
+
+  getDiscreetBlocks(from, to) {
+    var coordinatesArray = [];
+    // Translate coordinates
+    var x1 = Math.floor(from.x + this.mapData.length/2);
+    var y1 = Math.floor(from.y + this.mapData[0].length/2);
+    var x2 = Math.floor(to.x + this.mapData.length/2);
+    var y2 = Math.floor(to.y + this.mapData[0].length/2);
+    // Define differences and error check
+    var dx = Math.abs(x2 - x1);
+    var dy = Math.abs(y2 - y1);
+    var sx = (x1 < x2) ? 1 : -1;
+    var sy = (y1 < y2) ? 1 : -1;
+    var err = dx - dy;
+    // Set first coordinates
+    coordinatesArray.push(new THREE.Vector2(x1, y1));
+    // Main loop
+    while (!((x1 == x2) && (y1 == y2))) {
+      var e2 = err << 1;
+      if (e2 > -dy) {
+        err -= dy;
+        x1 += sx;
+      }
+      if (e2 < dx) {
+        err += dx;
+        y1 += sy;
+      }
+      // Set coordinates
+      coordinatesArray.push(new THREE.Vector2(x1, y1));
+    }
+    // Return the result
+    return coordinatesArray;
+  }
+
+  lineIntersectsTree(from, to) {
+    const blocks = this.getDiscreetBlocks(from, to);
+
+    for (let i = 0; i < blocks.length; i++) {
+      if (this.isTree(blocks[i].x, blocks[i].y)) return true;
+    }
+
+    return false;
+  }
+
+  getDebugBlocks(path) {
+    const pathBlocks = new THREE.Group();
+    for (let i = 0; i < path.length - 1; i++) {
+      pathBlocks.add(this.getDebugBlocksForLine(path[i], path[i+1]));
+    }
+    return pathBlocks;
+  }
+
+  getDebugBlocksForLine(from, to) {
+    const blocks = this.getDiscreetBlocks(from, to);
+    const blocksGroup = new THREE.Group();
+
+    for (let i = 0; i < blocks.length; i++) {
+      const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({
+        color: 0xff00ff, wireframe: true
+      }));
+      box.position.set(blocks[i].x - this.mapData.length/2, blocks[i].y - this.mapData[0].length/2, 0.5);
+      blocksGroup.add(box);
+    }
+
+    return blocksGroup;
+  }
+
+  trimPath(path) {
+    if (path.length <= 2) return path;
+
+    const newPath = [];
+    const end = path[path.length - 1];
+
+    i_loop: for (let i = 0; i < path.length - 1; i++) {
+      const p1 = path[i];
+      for (let j = path.length - 1; j > i; j--) {
+        const p2 = path[j];
+
+        if (!this.lineIntersectsTree(p1, p2)) {
+          newPath.push(p1);
+          i = j - 1;
+          continue i_loop;
+        }
+      }
+    }
+
+    newPath.push(end);
+
+    return newPath;
   }
 };

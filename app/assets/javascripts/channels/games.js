@@ -26,6 +26,7 @@ $(document).on('turbolinks:load', () => {
   const players = {};
   let thisPlayer;
   let navPath;
+  let visualNavPath;
 
   let timeOffset = 0.0;
 
@@ -38,6 +39,7 @@ $(document).on('turbolinks:load', () => {
   function navigateToNextPoint() {
     const nextPoint = navPath.shift();
     if (!nextPoint) {
+      // gameEngine.scene.remove(visualNavPath);
       App.game.sendAction({
         type: 'player_finished_moving',
         position: { x: thisPlayer.position.x, y: thisPlayer.position.y }
@@ -173,6 +175,17 @@ $(document).on('turbolinks:load', () => {
   gameEngine.onMouseClicked(point => {
     navPath = gameEngine.map.getPath(thisPlayer.position, point);
     if (!navPath) return;
+
+    // if (visualNavPath) gameEngine.scene.remove(visualNavPath);
+  	// var lineGeometry = new THREE.Geometry();
+  	// var vertArray = lineGeometry.vertices;
+    // navPath.forEach(p => vertArray.push(new THREE.Vector3(p.x, p.y, 0.5)));
+  	// lineGeometry.computeLineDistances();
+  	// var lineMaterial = new THREE.LineBasicMaterial( { color: 0xff0000 } );
+  	// visualNavPath = new THREE.Line( lineGeometry, lineMaterial );
+    // visualNavPath.add(gameEngine.map.getDebugBlocks(navPath));
+  	// gameEngine.scene.add(visualNavPath);
+
     navigateToNextPoint();
   });
 
@@ -185,6 +198,7 @@ $(document).on('turbolinks:load', () => {
     tmpVector3.copy(thisPlayer.position).sub(player.position);
     if (tmpVector3.lengthSq() > ability.range * ability.range) return false;
     thisPlayer.moving = false;
+    // gameEngine.scene.remove(visualNavPath);
     App.game.sendAction({
       type: 'target_player',
       point: { x: thisPlayer.position.x, y: thisPlayer.position.y },
