@@ -50,15 +50,7 @@ module.exports = class Map extends THREE.Object3D {
         for (let j = 0; j < this.mapData[i].length; j++) {
           let treeType = this.mapData[i][j];
 
-          if (treeType === 2 && Math.random() < 0.75) {
-            treeType = 0;
-          }
-
-          if (treeType === 3) {
-            treeType = 0;
-          }
-
-          if (treeType > 0) {
+          if (treeType === 1 || treeType === 2) {
             const rotation = Math.random()*2*Math.PI;
             const scale = 1.0 + Math.random()*0.7 - 0.5;
         		const mesh = treeType === 1 ? tree.clone() : treeLow.clone();
