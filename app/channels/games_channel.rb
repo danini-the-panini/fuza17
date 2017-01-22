@@ -5,10 +5,14 @@ class GamesChannel < ApplicationCable::Channel
 
     sleep 0.1
 
+    team_index = rand > 0.5 ? 0 : 1
+
+    spawn_x, spawn_y = map.spawn_point(team_index)
+
     time = Time.now
     intial_state = {
-      x: (rand * 20.0) - 10.0,
-      y: (rand * 20.0) - 10.0,
+      x: spawn_x,
+      y: spawn_y,
       hp: 100.0,
       abilities: [
         {
