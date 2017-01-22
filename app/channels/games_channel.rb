@@ -72,6 +72,7 @@ class GamesChannel < ApplicationCable::Channel
 
     case action['type']
     when 'player_started_moving'
+      return unless map.can_traverse?(action['point']['x'], action['point']['y'])
       state['x'] = action['position']['x']
       state['y'] = action['position']['y']
     when 'player_finished_moving'
@@ -151,5 +152,9 @@ class GamesChannel < ApplicationCable::Channel
 
   def game
     Game.find params['game_id']
+  end
+
+  def map
+    @_map ||= Map.new(Rails.root.join('app/assets/images/map.png'))
   end
 end
