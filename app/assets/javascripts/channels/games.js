@@ -54,6 +54,8 @@ $(document).on('turbolinks:load', () => {
   let isSetUp = false;
   let otherPlayersSetUp = false;
 
+  let gameState;
+
   function updateScoreCard() {
     let html = '';
     for (let id in players) {
@@ -161,7 +163,7 @@ $(document).on('turbolinks:load', () => {
       {
         if (!possibleHits[action.hit_id]) return;
         const targetMonument = gameEngine.map.monuments[action.monument_id];
-        console.log(`Monument #${action.monument_id} hit!`);
+        console.log(`Monument #${action.monument_id} HP: ${gameState.monument_hps[action.monument_id]}`);
         delete possibleHits[action.hit_id];
       }
       break;
@@ -205,6 +207,9 @@ $(document).on('turbolinks:load', () => {
 
     received(data) {
       console.log(data);
+      if (data.game_state) {
+        gameState = data.game_state;
+      }
       switch(data.type) {
       case 'player_joined':
         if (data.player.id !== playerId) {
@@ -318,7 +323,7 @@ $(document).on('turbolinks:load', () => {
     const time = +(new Date());
     if (time - ability.last_hit < ability.cooldown) return false;
     if (target && ability.type === 'target') {
-      if (!inRange(thisPlayer, player, ability.range)) return false;
+      if (!inRange(thisPlayer, target, ability.range)) return false;
     }
     return true;
   }
@@ -327,8 +332,7 @@ $(document).on('turbolinks:load', () => {
     if (player === thisPlayer || player.team === thisPlayer.team) return false;
     const abilityIndex = 0;
     const ability = thisPlayer.abilities[abilityIndex];
-    if (time - ability.last_hit < ability.cooldown) return false;
-    if (!inRange(thisPlayer, player, ability.range)) return false;
+    if (!canUseAbility(ability, player)) return;
     thisPlayer.moving = false;
     // gameEngine.scene.remove(visualNavPath);
     App.game.sendAction({
@@ -345,8 +349,7 @@ $(document).on('turbolinks:load', () => {
     const time = +(new Date());
     const abilityIndex = 0;
     const ability = thisPlayer.abilities[abilityIndex];
-    if (time - getClientTime(ability.last_hit) < ability.cooldown * 1000.0) return false;
-    if (!inRange(thisPlayer, monument, ability.range)) return false;
+    if (!canUseAbility(ability, monument)) return;
     thisPlayer.moving = false;
     // gameEngine.scene.remove(visualNavPath);
     App.game.sendAction({

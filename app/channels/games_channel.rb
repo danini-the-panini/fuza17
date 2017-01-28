@@ -1,5 +1,7 @@
 class GamesChannel < ApplicationCable::Channel
   def subscribed
+    game = find_game
+
     stream_from channel_name
     stream_from user_channel_name
 
@@ -49,7 +51,8 @@ class GamesChannel < ApplicationCable::Channel
                                    name: current_user.name,
                                    time: time.to_f,
                                    state: player.last_state
-                                 }
+                                 },
+                                 game_state: game.state
 
     players = game.players.where.not(user_id: current_user.id).map do |p|
       {
@@ -67,6 +70,7 @@ class GamesChannel < ApplicationCable::Channel
   end
 
   def unsubscribed
+    game = find_game
     player = game.players.find_by(user: current_user)
     return if player.nil?
 
@@ -85,6 +89,7 @@ class GamesChannel < ApplicationCable::Channel
   end
 
   def send_action(action)
+    game = find_game
     player = game.players.find_by(user: current_user)
     time = Time.now
 
@@ -165,16 +170,37 @@ class GamesChannel < ApplicationCable::Channel
                                        killer_id: hit.source_id,
                                        killer_state: killer_state
                                      }
-        game.hit_registers.where(hit_player_id: target_player.user_id).destroy_all
-
         killer.update(last_state: killer_state)
       end
 
       target_player.update(last_state: target_state)
-
-      game.hit_registers.where(hit_player_id: target_player.user_id,
-                                            hit_identifier: hit_id).destroy_all
       source_player.update(last_action: nil)
+      return
+    when 'monument_hit'
+      monument_id = action['monument_id']
+
+      hit_id = action['hit_id']
+
+      hit = Hit.find_by(hit_identifier: hit_id)
+      return if hit.nil?
+      source_player = game.players.find_by(user_id: hit.source_id)
+      hit.destroy
+
+      game.state['monument_hps'][monument_id] -= action['damage']
+
+      ActionCable.server.broadcast channel_name,
+                                   type: 'player_action',
+                                   player: {
+                                     id: source_player.user_id,
+                                     name: source_player.user.name,
+                                     state: source_player.last_state,
+                                     time: time.to_f
+                                   },
+                                   action: action,
+                                   game_state: game.state
+
+      source_player.update(last_action: nil)
+      game.save!
       return
     when 'player_respawn'
       target_player = game.players.find_by(user_id: action['player_id'])
@@ -244,15 +270,16 @@ class GamesChannel < ApplicationCable::Channel
     "games_#{params['game_id']}_user_#{current_user.id}_channel"
   end
 
-  def game
-    Game.find params['game_id']
-  end
-
   def map
     @_map ||= Map.new(Rails.root.join('app/assets/images/map.png'))
   end
 
+  def find_game
+    Game.find params['game_id']
+  end
+
   def get_team_index
+    game = find_game
     team_0_count = game.players.where(team: 0).count
     team_1_count = game.players.where(team: 1).count
 
