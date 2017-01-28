@@ -41,9 +41,13 @@ $(document).on('turbolinks:load', () => {
 
   let timeOffset = 0.0;
 
+  function getClientTime(serverTime) {
+    serverTime * 1000.0 - timeOffset;
+  }
+
   function getTimePassed(startTime) {
     const thisTime = +(new Date());
-    const thisStartTime = (startTime * 1000.0) - timeOffset;
+    const thisStartTime = getClientTime(startTime);
     return thisTime - thisStartTime;
   }
 
@@ -94,6 +98,15 @@ $(document).on('turbolinks:load', () => {
 
   const tmpVector3 = new THREE.Vector3();
 
+  function fireHomingMissile(action, dataPlayer, player, target, onHitCallback) {
+    const ability = player.abilities[action.ability_index];
+    tmpVector3.set(0, 0, 0.5).add(player.position);
+    const projectile = new HomingMissile(action.hit_id, ability, tmpVector3, target);
+    projectile.targetObject(target, getTimePassed(dataPlayer.time));
+    gameEngine.addProjectile(projectile);
+    projectile.onFinishedMoving(onHitCallback);
+  }
+
   function performAction(action, dataPlayer, player) {
     player.setState(dataPlayer.state);
     switch(action.type) {
@@ -108,11 +121,7 @@ $(document).on('turbolinks:load', () => {
         player.moving = false;
         const targetPlayer = players[action.target_id];
         const ability = player.abilities[action.ability_index];
-        tmpVector3.set(0, 0, 0.5).add(player.position);
-        const projectile = new HomingMissile(action.hit_id, ability, tmpVector3, targetPlayer);
-        projectile.targetObject(targetPlayer, getTimePassed(dataPlayer.time));
-        gameEngine.addProjectile(projectile);
-        projectile.onFinishedMoving(() => {
+        fireHomingMissile(action, dataPlayer, player, targetPlayer, () => {
           possibleHits[action.hit_id] = true;
           App.game.sendAction({
             type: 'player_hit',
@@ -123,11 +132,36 @@ $(document).on('turbolinks:load', () => {
         });
       }
       break;
+    case 'target_monument':
+      {
+        player.moving = false;
+        const targetTeam = 1 - player.team;
+        const targetMonument = gameEngine.map.monuments[targetTeam];
+        const ability = player.abilities[action.ability_index];
+        fireHomingMissile(action, dataPlayer, player, targetMonument, () => {
+          possibleHits[action.hit_id] = true;
+          App.game.sendAction({
+            type: 'monument_hit',
+            damage: ability.damage,
+            hit_id: action.hit_id,
+            monument_id: targetTeam
+          });
+        });
+      }
+      break
     case 'player_hit':
       {
         if (!possibleHits[action.hit_id]) return;
         const targetPlayer = players[action.player_id];
         console.log('HP: ', player.hp);
+        delete possibleHits[action.hit_id];
+      }
+      break;
+    case 'monument_hit':
+      {
+        if (!possibleHits[action.hit_id]) return;
+        const targetMonument = gameEngine.map.monuments[action.monument_id];
+        console.log(`Monument #${action.monument_id} hit!`);
         delete possibleHits[action.hit_id];
       }
       break;
@@ -274,14 +308,27 @@ $(document).on('turbolinks:load', () => {
     navigateToNextPoint();
   });
 
+  function inRange(obj1, obj2, range) {
+    tmpVector3.copy(obj1).sub(obj2);
+    if (tmpVector3.lengthSq() > range * range) return false;
+    return true;
+  }
+
+  function canUseAbility(ability, target = null) {
+    const time = +(new Date());
+    if (time - ability.last_hit < ability.cooldown) return false;
+    if (target && ability.type === 'target') {
+      if (!inRange(thisPlayer, player, ability.range)) return false;
+    }
+    return true;
+  }
+
   gameEngine.onPlayerClicked(player => {
     if (player === thisPlayer || player.team === thisPlayer.team) return false;
-    const time = +(new Date());
     const abilityIndex = 0;
     const ability = thisPlayer.abilities[abilityIndex];
     if (time - ability.last_hit < ability.cooldown) return false;
-    tmpVector3.copy(thisPlayer.position).sub(player.position);
-    if (tmpVector3.lengthSq() > ability.range * ability.range) return false;
+    if (!inRange(thisPlayer, player, ability.range)) return false;
     thisPlayer.moving = false;
     // gameEngine.scene.remove(visualNavPath);
     App.game.sendAction({
@@ -295,6 +342,18 @@ $(document).on('turbolinks:load', () => {
 
   gameEngine.onMonumentClicked(monument => {
     if (monument.team === thisPlayer.team) return false;
+    const time = +(new Date());
+    const abilityIndex = 0;
+    const ability = thisPlayer.abilities[abilityIndex];
+    if (time - getClientTime(ability.last_hit) < ability.cooldown * 1000.0) return false;
+    if (!inRange(thisPlayer, monument, ability.range)) return false;
+    thisPlayer.moving = false;
+    // gameEngine.scene.remove(visualNavPath);
+    App.game.sendAction({
+      type: 'target_monument',
+      point: { x: thisPlayer.position.x, y: thisPlayer.position.y },
+      ability_index: abilityIndex
+    });
     return true;
   });
 

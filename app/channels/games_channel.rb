@@ -104,7 +104,7 @@ class GamesChannel < ApplicationCable::Channel
       state['x'] = action['position']['x']
       state['y'] = action['position']['y']
       save_action = true
-    when 'target_player'
+    when 'target_player', 'target_monument'
       return if state['dead']
       state['x'] = action['point']['x']
       state['y'] = action['point']['y']
