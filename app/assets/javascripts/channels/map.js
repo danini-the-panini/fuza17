@@ -5,6 +5,8 @@ OBJLoader(THREE);
 const AStar = require('./astar');
 const Graph = require('./graph');
 
+const Monument = require('./monument');
+
 module.exports = class Map extends THREE.Object3D {
   static WALL_GEOM = new THREE.BoxGeometry(1, 1, 1);
   static TILE_TYPES = {
@@ -14,7 +16,8 @@ module.exports = class Map extends THREE.Object3D {
     spawnPoint0: [255, 0, 0],
     spawnPoint1: [0, 255, 0],
     monument0: [255, 255, 0],
-    monument1: [0, 255, 255]
+    monument1: [0, 255, 255],
+    invisibleWall: [127, 127, 127]
   }
 
   constructor() {
@@ -23,6 +26,7 @@ module.exports = class Map extends THREE.Object3D {
     this.addFloor();
     this.computeGraph(() => {
       this.addTrees();
+      this.addMonuments();
     });
   }
 
@@ -78,15 +82,38 @@ module.exports = class Map extends THREE.Object3D {
   }
 
   addMonuments() {
+    this.monuments = [];
     for (let i = 0; i < this.mapData.length; i++) {
       for (let j = 0; j < this.mapData[i].length; j++) {
         const monumentType = this.mapData[i][j];
         if (monumentType === 'monument0' || monumentType === 'monument1') {
           const team = monumentType === 'monument0' ? 0 : 1;
-          const monument = new Monument(team, new Vector3(i - this.mapData.length/2, j - this.mapData[i].lenfth/2, 0));
+          const monument = new Monument(team, new THREE.Vector3(i - this.mapData.length/2, j - this.mapData[i].length/2, 0));
           this.add(monument);
+          this.monuments[team] = monument;
         }
       }
+    }
+  }
+
+  printMap() {
+    for (let i = 0; i < this.mapData.length; i++) {
+      let s = '';
+      for (let j = 0; j < this.mapData[i].length; j++) {
+        const m = this.mapData[i][j];
+        if (m === 'tree') {
+          s += '^';
+        } else if (m === 'lowTree') {
+          s += '#';
+        } else if (/spawn/.test(m)) {
+          s += '*';
+        } else if (/monument/.test(m)) {
+          s += 'M';
+        } else {
+          s += ' ';
+        }
+      }
+      console.log(s);
     }
   }
 
@@ -118,14 +145,20 @@ module.exports = class Map extends THREE.Object3D {
         }
       }
 
-      this.navGraph = new Graph(this.mapData.map(row => row.map(v => v === 'path' ? 9999 : 1)));
+      this.navGraph = new Graph(this.mapData.map(row => row.map(v => this.isPathable(v) ? 1 : 9999)));
 
       callback();
     });
   }
 
+  isPathable(m) {
+    if (m === 'path' || /spawn/.test(m)) return true;
+    return false;
+  }
+
   isTree(i, j) {
-    return this.mapData[i][j] === 'tree' || this.mapData[i][j] === 'lowTree';
+    const m = this.mapData[i][j];
+    return m === 'tree' || m === 'lowTree' || /monument/.test(m) || m === 'invisibleWall';
   }
 
   isTreeOrBuffer(i, j) {

@@ -293,6 +293,11 @@ $(document).on('turbolinks:load', () => {
     return true;
   });
 
+  gameEngine.onMonumentClicked(monument => {
+    if (monument.team === thisPlayer.team) return false;
+    return true;
+  });
+
   $(document).keyup(function(e) {
     if (e.keyCode == 27) { // escape key maps to keycode `27`
       gameMenu.toggle();

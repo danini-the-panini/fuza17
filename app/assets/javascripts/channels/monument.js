@@ -12,7 +12,7 @@ module.exports = class Monument extends THREE.Object3D {
     this.position.copy(position);
 
     let loader = new THREE.OBJLoader();
-    loader.load('/assets/monument.obj', (object) =>
+    loader.load('/assets/monument.obj', (object) => {
       object.traverse(child => {
         child.castShadow = true;
         child.receiveShadow = false;
@@ -20,8 +20,8 @@ module.exports = class Monument extends THREE.Object3D {
           child.material.color = new THREE.Color(Player.TEAM_COLORS[this.team]);
         }
       });
-      mesh = object.clone();
+      const mesh = object.clone();
       this.add(mesh);
-    })
+    });
   }
 };

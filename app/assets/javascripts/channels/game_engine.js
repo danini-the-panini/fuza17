@@ -1,6 +1,7 @@
 const THREE = require('three');
 const Map = require('./map');
 const Player = require('./player');
+const Monument = require('./monument');
 
 module.exports = class GameEngine {
   static CAMERA_OFFSET = new THREE.Vector3(0, -5, 10)
@@ -62,8 +63,6 @@ module.exports = class GameEngine {
 
     this.projectiles = new THREE.Group();
     this.scene.add(this.projectiles);
-
-
   }
 
   onMouseClicked(handler) {
@@ -72,6 +71,10 @@ module.exports = class GameEngine {
 
   onPlayerClicked(handler) {
     this.playerClickHandler = handler;
+  }
+
+  onMonumentClicked(handler) {
+    this.monumentClickHandler = handler;
   }
 
   mouseClicked(evt) {
@@ -84,16 +87,20 @@ module.exports = class GameEngine {
 
     const floorIntersection = this.getIntersection(mousePosition, [this.map.floor]);
     const playerIntersection = this.getIntersection(mousePosition, this.getOtherPlayers());
+    const monumentIntersection = this.map.monuments ? this.getIntersection(mousePosition, this.map.monuments) : false;
 
-    let acknowledgePlayerHit = false;
-
-    if (playerIntersection) {
-      const player = playerIntersection.object.parent;
-      acknowledgePlayerHit = this.playerClickHandler(player);
+    if (monumentIntersection) {
+      const monument = this.getParentOfType(monumentIntersection.object, Monument);
+      if (this.monumentClickHandler(monument)) return;
     }
-    if (!acknowledgePlayerHit && floorIntersection) {
+    if (playerIntersection) {
+      const player = this.getParentOfType(playerIntersection.object, Player);
+      if (this.playerClickHandler(player)) return;
+    }
+    if (floorIntersection) {
       const point = floorIntersection.point;
       this.mouseClickHandler(point);
+      return;
     }
   }
 
@@ -105,6 +112,12 @@ module.exports = class GameEngine {
       return intersects[0];
     }
     return null;
+  }
+
+  getParentOfType(object, type) {
+    if (!object) return null;
+    if (object.constructor === type) return object;
+    return this.getParentOfType(object.parent, type);
   }
 
   setCameraExtents() {
@@ -178,10 +191,5 @@ module.exports = class GameEngine {
   start() {
     this.lastUpdate = +(new Date());
     this.render();
-  }
-
-  createMonument(base, color) {
-    const monument = base.clone();
-    monument.traverse(child => child.material.color = color);
   }
 };
