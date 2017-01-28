@@ -5,7 +5,7 @@ class GamesChannel < ApplicationCable::Channel
 
     sleep 0.1
 
-    team_index = rand > 0.5 ? 0 : 1
+    team_index = get_team_index
 
     spawn_x, spawn_y = map.spawn_point(team_index)
 
@@ -16,6 +16,7 @@ class GamesChannel < ApplicationCable::Channel
       hp: 100.0,
       kills: 0,
       deaths: 0,
+      team: team_index,
       abilities: [
         {
           cooldown: 0.5,
@@ -29,6 +30,7 @@ class GamesChannel < ApplicationCable::Channel
 
     player = game.players.find_or_create_by(user_id: current_user.id) do |p|
       p.last_state = initial_state
+      p.team = team_index
 
       ActionCable.server.broadcast channel_name,
                                    type: 'player_joined',
@@ -186,7 +188,7 @@ class GamesChannel < ApplicationCable::Channel
 
       target_state['dead'] = false
 
-      team_index = rand > 0.5 ? 0 : 1
+      team_index = target_player.team
       spawn_x, spawn_y = map.spawn_point(team_index)
 
       target_state['x'] = spawn_x
@@ -249,5 +251,18 @@ class GamesChannel < ApplicationCable::Channel
 
   def map
     @_map ||= Map.new(Rails.root.join('app/assets/images/map.png'))
+  end
+
+  def get_team_index
+    team_0_count = game.players.where(team: 0).count
+    team_1_count = game.players.where(team: 1).count
+
+    if team_0_count < team_1_count
+      0
+    elsif team_1_count < team_0_count
+      1
+    else
+      rand > 0.5 ? 0 : 1
+    end
   end
 end

@@ -62,6 +62,8 @@ module.exports = class GameEngine {
 
     this.projectiles = new THREE.Group();
     this.scene.add(this.projectiles);
+
+
   }
 
   onMouseClicked(handler) {
@@ -173,5 +175,10 @@ module.exports = class GameEngine {
   start() {
     this.lastUpdate = +(new Date());
     this.render();
+  }
+
+  createMonument(base, color) {
+    const monument = base.clone();
+    monument.traverse(child => child.material.color = color);
   }
 };

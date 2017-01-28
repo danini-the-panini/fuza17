@@ -270,7 +270,7 @@ $(document).on('turbolinks:load', () => {
   });
 
   gameEngine.onPlayerClicked(player => {
-    if (player === thisPlayer) return false;
+    if (player === thisPlayer || player.team === thisPlayer.team) return false;
     const time = +(new Date());
     const abilityIndex = 0;
     const ability = thisPlayer.abilities[abilityIndex];
