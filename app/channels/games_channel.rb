@@ -90,16 +90,20 @@ class GamesChannel < ApplicationCable::Channel
 
     state = player.last_state
 
+    save_action = false
+
     case action['type']
     when 'player_started_moving'
       return if state['dead']
       return unless map.can_traverse?(action['point']['x'], action['point']['y'])
       state['x'] = action['position']['x']
       state['y'] = action['position']['y']
+      save_action = true
     when 'player_finished_moving'
       return if state['dead']
       state['x'] = action['position']['x']
       state['y'] = action['position']['y']
+      save_action = true
     when 'target_player'
       return if state['dead']
       state['x'] = action['point']['x']
@@ -114,26 +118,18 @@ class GamesChannel < ApplicationCable::Channel
 
         Hit.create(source_id: current_user.id, hit_identifier: action['hit_id'], ability_index: ability_index)
       end
+      save_action = true
     when 'player_hit'
       target_player = game.players.find_by(user_id: action['player_id'])
       target_state = target_player.last_state
 
-      # consensus_agreement = (game.players.count * 0.75).ceil
-      consensus_agreement = 1
-
       hit_id = action['hit_id']
+
       hit = Hit.find_by(hit_identifier: hit_id)
-      game.hit_registers.find_or_create_by(hit_player_id: target_player.user_id,
-                                           reporting_player_id: current_user.id,
-                                           hit_identifier: hit_id)
+      return if hit.nil?
+      source_player = game.players.find_by(user_id: hit.source_id)
+      hit.destroy
 
-      hit_count = game.hit_registers.where(hit_player_id: target_player.user_id,
-                                            hit_identifier: hit_id).count
-
-      if hit_count < consensus_agreement
-        target_player.update(last_state: target_state)
-        return
-      end
       target_state['hp'] -= action['damage']
 
       ActionCable.server.broadcast channel_name,
@@ -178,6 +174,7 @@ class GamesChannel < ApplicationCable::Channel
 
       game.hit_registers.where(hit_player_id: target_player.user_id,
                                             hit_identifier: hit_id).destroy_all
+      source_player.update(last_action: nil)
       return
     when 'player_respawn'
       target_player = game.players.find_by(user_id: action['player_id'])
@@ -223,7 +220,9 @@ class GamesChannel < ApplicationCable::Channel
                                  },
                                  action: action
 
-    player.update(last_action: action, last_action_time: time, last_state: state)
+    savable_action = save_action ? action : nil
+
+    player.update(last_action: savable_action, last_action_time: time, last_state: state)
   end
 
   def leave_game

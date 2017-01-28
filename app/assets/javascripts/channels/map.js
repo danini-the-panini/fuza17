@@ -7,6 +7,15 @@ const Graph = require('./graph');
 
 module.exports = class Map extends THREE.Object3D {
   static WALL_GEOM = new THREE.BoxGeometry(1, 1, 1);
+  static TILE_TYPES = {
+    tree: [0, 0, 0],
+    lowTree: [0, 0, 255],
+    treePadding: [255, 0, 255],
+    spawnPoint0: [255, 0, 0],
+    spawnPoint1: [0, 255, 0],
+    monument0: [255, 255, 0],
+    monument1: [0, 255, 255]
+  }
 
   constructor() {
     super();
@@ -51,12 +60,11 @@ module.exports = class Map extends THREE.Object3D {
         for (let i = 0; i < this.mapData.length; i++) {
           for (let j = 0; j < this.mapData[i].length; j++) {
             let treeType = this.mapData[i][j];
-            const noise = canvas.getContext('2d').getImageData(i, j, 1, 1).data[0]/256;
-
-            if (treeType === 1 || treeType === 2) {
+            if (treeType === 'tree' || treeType === 'lowTree') {
+              const noise = canvas.getContext('2d').getImageData(i, j, 1, 1).data[0]/256;
               const rotation = noise*2*Math.PI;
               const scale = 1.0 + noise*0.7 - 0.5;
-          		const mesh = treeType === 1 ? tree.clone() : treeLow.clone();
+          		const mesh = treeType === 'tree' ? tree.clone() : treeLow.clone();
               mesh.rotation.x += 1.5708;
               mesh.rotation.y == rotation;
               mesh.scale.multiplyScalar(scale);
@@ -69,6 +77,34 @@ module.exports = class Map extends THREE.Object3D {
     });
   }
 
+  addMonuments() {
+    for (let i = 0; i < this.mapData.length; i++) {
+      for (let j = 0; j < this.mapData[i].length; j++) {
+        const monumentType = this.mapData[i][j];
+        if (monumentType === 'monument0' || monumentType === 'monument1') {
+          const team = monumentType === 'monument0' ? 0 : 1;
+          const monument = new Monument(team, new Vector3(i - this.mapData.length/2, j - this.mapData[i].lenfth/2, 0));
+          this.add(monument);
+        }
+      }
+    }
+  }
+
+  getMonumentForTeam(team) {
+    this.monuments[team];
+  }
+
+  getTileType(pixel) {
+    for (let type in Map.TILE_TYPES) {
+      if (!Map.TILE_TYPES.hasOwnProperty(type)) return;
+      const typePixel = Map.TILE_TYPES[type];
+      if (pixel[0] === typePixel[0] && pixel[1] === typePixel[1] && pixel[2] === typePixel[2]) {
+        return type;
+      }
+    }
+    return 'path';
+  }
+
   computeGraph(callback) {
     this.loadImage('/assets/map.png', (img, canvas) => {
 
@@ -78,33 +114,22 @@ module.exports = class Map extends THREE.Object3D {
         this.mapData[i] = [];
         for (let j = 0; j < img.height; j++) {
           const pixel = canvas.getContext('2d').getImageData(i, j, 1, 1).data;
-          let treeType = 0;
-          if (pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0) {
-            treeType = 1;
-          }
-          if(pixel[0] === 0 && pixel[1] === 0 && pixel[2] > 0) {
-            treeType = 2;
-          }
-          if(pixel[0] > 0 && pixel[1] === 0 && pixel[2] > 0) {
-            treeType = 3;
-          }
-
-          this.mapData[i][j] = treeType;
+          this.mapData[i][j] = this.getTileType(pixel);
         }
       }
 
-      this.navGraph = new Graph(this.mapData.map(row => row.map(v => v ? 9999 : 1)));
+      this.navGraph = new Graph(this.mapData.map(row => row.map(v => v === 'path' ? 9999 : 1)));
 
       callback();
     });
   }
 
   isTree(i, j) {
-    return this.mapData[i][j] === 1 || this.mapData[i][j] === 2;
+    return this.mapData[i][j] === 'tree' || this.mapData[i][j] === 'lowTree';
   }
 
   isTreeOrBuffer(i, j) {
-    return this.isTree(i) || this.mapData[i][j] === 3;
+    return this.isTree(i) || this.mapData[i][j] === 'treePadding';
   }
 
   loadImage(path, callback) {

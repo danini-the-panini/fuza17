@@ -47,6 +47,9 @@ $(document).on('turbolinks:load', () => {
     return thisTime - thisStartTime;
   }
 
+  let isSetUp = false;
+  let otherPlayersSetUp = false;
+
   function updateScoreCard() {
     let html = '';
     for (let id in players) {
@@ -117,7 +120,6 @@ $(document).on('turbolinks:load', () => {
             hit_id: action.hit_id,
             player_id: action.target_id
           });
-          gameEngine.removeProjectile(projectile);
         });
       }
       break;
@@ -197,6 +199,7 @@ $(document).on('turbolinks:load', () => {
         gameEngine.setThisPlayer(thisPlayer);
         gameEngine.followPlayer(thisPlayer);
         updateScoreCard();
+        isSetUp = true;
         break;
       case 'other_players':
         data.players.forEach(p => {
@@ -208,6 +211,7 @@ $(document).on('turbolinks:load', () => {
           }
         });
         updateScoreCard();
+        otherPlayersSetUp = true;
         break;
       case 'player_left':
         const player = players[data.player.id];
@@ -220,6 +224,7 @@ $(document).on('turbolinks:load', () => {
         }
         break;
       case 'player_action':
+        if (!isSetUp || !otherPlayersSetUp) break;
         performAction(data.action, data.player, players[data.player.id]);
         break;
       default:

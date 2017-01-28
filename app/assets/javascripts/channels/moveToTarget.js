@@ -4,13 +4,16 @@ const tmpVector3 = new THREE.Vector3();
 
 module.exports = function(klass) {
   klass.prototype.onFinishedMoving = function(handler) {
-    this.finishMoveHandler = handler;
+    this.finishMoveHandlers = this.finishMoveHandlers || []
+    this.finishMoveHandlers.push(handler);
   }
 
   klass.prototype.stopMoving = function() {
     if (!this.moving) return;
     this.moving = false;
-    if (this.finishMoveHandler) this.finishMoveHandler();
+    if (this.finishMoveHandlers) {
+      this.finishMoveHandlers.forEach(handler => handler());
+    }
   }
 
   klass.prototype.moveOverTime = function(delta) {

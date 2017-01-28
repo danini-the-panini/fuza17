@@ -118,6 +118,9 @@ module.exports = class GameEngine {
   }
 
   addProjectile(projectile) {
+    projectile.onFinishedMoving(() => {
+      this.removeProjectile(projectile);
+    });
     this.projectiles.add(projectile);
     return projectile;
   }
