@@ -14,6 +14,8 @@ $(document).on('turbolinks:load', () => {
   const deathCounter = $('#death-counter');
   const deathText = $('#death-text');
   const scoreCardBody = $('#score-card tbody');
+  const playerHudOverlay = $('#hud-overlay');
+  const thisPlayerHealthBar = $('#player-health-bar');
 
   const gameMenu = $('#menu');
   const leaveButton = $('#leave-button');
@@ -56,6 +58,8 @@ $(document).on('turbolinks:load', () => {
 
   let gameState;
 
+  const tmpVector3 = new THREE.Vector3();
+
   function updateScoreCard() {
     let html = '';
     for (let id in players) {
@@ -64,6 +68,49 @@ $(document).on('turbolinks:load', () => {
       html += `<tr><td>${player.name}</td><td>${player.state.kills}</td><td>${player.state.deaths}</td></tr>`;
     }
     scoreCardBody.html(html);
+  }
+
+  function findOrCreateHudForPlayer(player) {
+    const hudId = `player-hud-${player.playerId}`;
+    let hudForPlayer = document.getElementById(hudId);
+    if (hudForPlayer) return hudForPlayer;
+    hudForPlayer = document.createElement('div');
+    hudForPlayer.id = hudId;
+    hudForPlayer.classList += 'player-hud';
+    playerHudOverlay.append(hudForPlayer);
+    return hudForPlayer;
+  }
+
+  function deleteHudForPlayer(player) {
+    const hudForPlayer = findOrCreateHudForPlayer(player);
+    hudForPlayer.remove();
+  }
+
+  const MAX_HP = 100.0; // TODO: make this variable
+  function updateHudForPlayer(player) {
+    const hudForPlayer = findOrCreateHudForPlayer(player);
+    const healthPercent = (player.state.hp / MAX_HP) * 100.0;
+    hudForPlayer.innerHTML = `
+      <div class="player-hud__nametag">${player.name}</div>
+      <div class="player-hud__health-bar">
+        <div class="player-hud__health-bar-full" style="width:${healthPercent}%">
+      </div>
+    `;
+  }
+
+  function updateThisPlayerHud() {
+    const healthPercent = (thisPlayer.state.hp / MAX_HP) * 100.0;
+    thisPlayerHealthBar.text(`${thisPlayer.state.hp} / ${MAX_HP}`);
+    thisPlayerHealthBar.css('width', `${healthPercent}%`);
+  }
+
+  function updatePlayerHudPosition(player) {
+    const hudForPlayer = findOrCreateHudForPlayer(player);
+
+    gameEngine.getPlayerScreenCoords(player, tmpVector3);
+
+    hudForPlayer.style.left = `${tmpVector3.x}px`;
+    hudForPlayer.style.top = `${tmpVector3.y}px`;
   }
 
   let spawnTime;
@@ -97,8 +144,6 @@ $(document).on('turbolinks:load', () => {
       point: { x: nextPoint.x, y: nextPoint.y }
     });
   }
-
-  const tmpVector3 = new THREE.Vector3();
 
   function fireHomingMissile(action, dataPlayer, player, target, onHitCallback) {
     const ability = player.abilities[action.ability_index];
@@ -157,6 +202,11 @@ $(document).on('turbolinks:load', () => {
         const targetPlayer = players[action.player_id];
         console.log('HP: ', player.hp);
         delete possibleHits[action.hit_id];
+        if (player === thisPlayer) {
+          updateThisPlayerHud();
+        } else {
+          updateHudForPlayer(player);
+        }
       }
       break;
     case 'monument_hit':
@@ -179,6 +229,8 @@ $(document).on('turbolinks:load', () => {
           spawnTime = parseFloat(action.spawn_time, 10) * 1000;
           deathCounter.text(Math.floor(spawnTime / 1000));
           gameEngine.followPlayer(killer);
+        } else {
+          deleteHudForPlayer(player);
         }
         updateScoreCard();
       }
@@ -188,6 +240,9 @@ $(document).on('turbolinks:load', () => {
       if (player === thisPlayer) {
         deathOverlay.hide();
         gameEngine.followPlayer(thisPlayer);
+        updateThisPlayerHud();
+      } else {
+        updateHudForPlayer(player);
       }
       break;
     default:
@@ -214,6 +269,7 @@ $(document).on('turbolinks:load', () => {
       case 'player_joined':
         if (data.player.id !== playerId) {
           players[data.player.id] = new Player(data.player.id, data.player.name, data.player.state);
+          updateHudForPlayer(players[data.player.id]);
           gameEngine.addPlayer(players[data.player.id]);
         }
         updateScoreCard();
@@ -234,16 +290,17 @@ $(document).on('turbolinks:load', () => {
           deathCounter.text('');
         }
         updateScoreCard();
+        updateThisPlayerHud();
         gameEngine.addPlayer(thisPlayer);
         gameEngine.setThisPlayer(thisPlayer);
         gameEngine.followPlayer(thisPlayer);
-        updateScoreCard();
         isSetUp = true;
         break;
       case 'other_players':
         data.players.forEach(p => {
           players[p.id] = new Player(p.id, p.name, p.state);
           gameEngine.addPlayer(players[p.id]);
+          updateHudForPlayer(players[p.id]);
 
           if (p.action) {
             performAction(p.action, p, players[p.id]);
@@ -260,6 +317,7 @@ $(document).on('turbolinks:load', () => {
           gameEngine.removePlayer(player);
           delete players[data.player.id];
           updateScoreCard();
+          deleteHudForPlayer(players[data.player.id]);
         }
         break;
       case 'player_action':
@@ -358,6 +416,15 @@ $(document).on('turbolinks:load', () => {
       ability_index: abilityIndex
     });
     return true;
+  });
+
+  gameEngine.onUpdate(() => {
+    for (let id in players) {
+      if (!players.hasOwnProperty(id)) return;
+      const player = players[id];
+      if (player === thisPlayer) continue;
+      updatePlayerHudPosition(player);
+    }
   });
 
   $(document).keyup(function(e) {

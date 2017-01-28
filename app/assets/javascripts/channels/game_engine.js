@@ -63,6 +63,8 @@ module.exports = class GameEngine {
 
     this.projectiles = new THREE.Group();
     this.scene.add(this.projectiles);
+
+    this._tmpVector = new THREE.Vector3();
   }
 
   onMouseClicked(handler) {
@@ -75,6 +77,10 @@ module.exports = class GameEngine {
 
   onMonumentClicked(handler) {
     this.monumentClickHandler = handler;
+  }
+
+  onUpdate(handler) {
+    this.updateHandler = handler;
   }
 
   mouseClicked(evt) {
@@ -159,6 +165,17 @@ module.exports = class GameEngine {
     this.light.target = player;
   }
 
+  getPlayerScreenCoords(player, tmpVector = this._tmpVector) {
+    tmpVector.setFromMatrixPosition(player.matrixWorld);
+    tmpVector.z += 1.5;
+    tmpVector.project(this.camera);
+
+    tmpVector.x = (tmpVector.x * (window.innerWidth/2)) + (window.innerWidth/2);
+    tmpVector.y = - (tmpVector.y * (window.innerHeight/2)) + (window.innerHeight/2);
+
+    return tmpVector;
+  }
+
   update() {
     const now = +(new Date());
     const delta = now - this.lastUpdate;
@@ -178,6 +195,8 @@ module.exports = class GameEngine {
     }
 
     this.lastUpdate = now;
+
+    if (this.updateHandler) this.updateHandler(delta);
   }
 
   render = () => {
