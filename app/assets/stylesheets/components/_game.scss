@@ -23,6 +23,14 @@ html.page-game-show {
   }
 }
 
+#hud-overlay {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
 .player-hud {
   position: absolute;
   width: 100px;
@@ -67,5 +75,44 @@ html.page-game-show {
     text-shadow: black 0px 0px 1px;
     overflow: hidden;
     white-space: nowrap;
+  }
+}
+
+.monument-health-bars {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 50%;
+  transform: translateX(-50%);
+  height: 1.4rem;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0.2rem 0.3rem;
+
+  .monument-health-bar {
+    display: inline-block;
+    width: 50%;
+    height: 100%;
+
+    .monument-health-bar-full {
+      height: 100%;
+      text-align: center;
+      line-height: 1rem;
+      color: white;
+      text-shadow: black 0px 0px 1px;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    #monument-health-bar-0 {
+      background: blue;
+      float: right;
+      margin-right: 0.1rem;
+    }
+
+    #monument-health-bar-1 {
+      background: red;
+      margin-left: 0.1rem;
+      float: left;
+    }
   }
 }

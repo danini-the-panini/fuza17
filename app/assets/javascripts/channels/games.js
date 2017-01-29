@@ -113,6 +113,20 @@ $(document).on('turbolinks:load', () => {
     hudForPlayer.style.top = `${tmpVector3.y}px`;
   }
 
+  const MAX_MONUMENT_HP = 1000.0; // TODO: get this from the server
+  function updateMonumentHP(team) {
+    const monumentHp = gameState.monument_hps[team];
+    const hpPercent = (monumentHp / MAX_MONUMENT_HP) * 100.0;
+    const monumentHpEl = $(`#monument-health-bar-${team}`);
+    monumentHpEl.width(`${hpPercent}%`);
+    monumentHpEl.text(`${monumentHp} / ${MAX_MONUMENT_HP}`);
+  }
+
+  function updateAllMonumentHPs() {
+    updateMonumentHP(0);
+    updateMonumentHP(1);
+  }
+
   let spawnTime;
 
   function respawnLater(player) {
@@ -264,6 +278,7 @@ $(document).on('turbolinks:load', () => {
       console.log(data);
       if (data.game_state) {
         gameState = data.game_state;
+        updateAllMonumentHPs();
       }
       switch(data.type) {
       case 'player_joined':
