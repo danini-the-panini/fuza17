@@ -1,0 +1,10 @@
+.footer {
+  height: $footer-height;
+  background: #DDD;
+  padding: 1rem;
+
+  &__copyright {
+    color: #333;
+    text-shadow: 1px 1px 1px white;
+  }
+}

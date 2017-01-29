@@ -1,0 +1,29 @@
+.new-game-form {
+  width: 100%;
+  max-width: 20rem;
+  margin: 0 auto;
+  padding: 1rem;
+
+  .actions {
+    text-align: right;
+  }
+
+  &__field, &__submit {
+  }
+
+  &__field {
+    width: 100%;
+    border: 1px solid $border-color;
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+  }
+
+  &__submit {
+    background: green;
+    border: none;
+    padding: 0.3rem 1rem;
+    border-radius: 4px;
+    color: white;
+  }
+}

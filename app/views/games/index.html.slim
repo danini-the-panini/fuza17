@@ -1,7 +1,8 @@
-h1 Games
+h1.content__header Games
 
-ul
+ul.games-list
   - @games.each do |game|
-    li= link_to game.name, game_path(game)
-
-= link_to 'New Game', new_game_path
+    li.games-list__item
+      = link_to game_path(game) do
+        .game__name= game.name
+        .game__status= game.status.humanize

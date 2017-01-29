@@ -1,0 +1,46 @@
+.devise-page {
+  form {
+    max-width: 20rem;
+    margin: 0 auto;
+
+    .field, .actions {
+      padding: 0 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .actions {
+      text-align: right;
+    }
+
+    input[type='text'], input[type='email'], input[type='password'] {
+      border: 1px solid $border-color;
+      padding: 0.5rem;
+      border-radius: 4px;
+      width: 100%;
+    }
+
+    input[type='submit'] {
+      background: green;
+      padding: 0.3rem 1rem;
+      color: white;
+      border-radius: 4px;
+      border: 0;
+    }
+
+    #error_explanation {
+      background: red;
+      color: white;
+      margin-bottom: 1rem;
+
+      h2 { display: none }
+
+      ul {
+        list-style: none;
+
+        li {
+          padding: 0.5rem;
+        }
+      }
+    }
+  }
+}

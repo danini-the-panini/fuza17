@@ -1,5 +1,6 @@
-h1 New Game
+h1.content__header New Game
 
-= form_for @game, url: { action: 'create' } do |f|
-  = f.text_field :name
-  = f.submit 'Create'
+= form_for @game, url: { action: 'create' }, html: { class: 'new-game-form' } do |f|
+  = f.text_field :name, placeholder: 'Name', class: 'new-game-form__field'
+  .actions
+    = f.submit 'Create', class: 'new-game-form__submit'

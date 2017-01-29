@@ -10,6 +10,14 @@ $(document).on('turbolinks:load', () => {
     App.game.unsubscribe();
   }
 
+  const canvas = $('#game-canvas');
+
+  if (canvas.length === 0) {
+    $('html').css('overflow', 'auto');
+    return;
+  }
+  $('html').css('overflow', 'hidden');
+
   const deathOverlay = $('#death-overlay');
   const deathCounter = $('#death-counter');
   const deathText = $('#death-text');
@@ -22,10 +30,6 @@ $(document).on('turbolinks:load', () => {
   const resumeButton = $('#resume-button');
 
   const menuButton = $('#menu-button');
-
-  const canvas = $('#game-canvas');
-
-  if (canvas.length === 0) return;
 
   const gameId = canvas.data('game-id');
   const playerId = canvas.data('player-id');

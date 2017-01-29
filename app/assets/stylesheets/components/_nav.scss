@@ -1,0 +1,30 @@
+.nav {
+  display: block;
+  width: 100%;
+  height: $header-height;
+  background: black;
+  list-style: none;
+
+  &__link, &__session-link {
+    height: 100%;
+    line-height: $header-height;
+    padding: 0 1rem;
+
+    a {
+      color: white;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+
+  &__link {
+    float: left;
+  }
+
+  &__session-link {
+    float: right;
+  }
+}
