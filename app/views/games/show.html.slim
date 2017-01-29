@@ -1,4 +1,4 @@
-.game
+.game#game
   canvas#game-canvas.game__canvas(data-game-id="#{@game.id}", data-player-id="#{current_user.id}")
 
   table#score-card
@@ -9,18 +9,6 @@
         th 💀
     tbody
 
-  #death-overlay style="display:none"
-    #death-text
-    #death-counter
-
-  #menu style="display:none"
-    .menu-content
-      h2 Menu
-      button#leave-button Leave Game
-      button#resume-button Resume
-
-  #menu-button Menu
-
   #hud-overlay
     .player-health-bar
       #player-health-bar.player-health-bar__full
@@ -30,3 +18,18 @@
         .monument-health-bar-full#monument-health-bar-0
       .monument-health-bar
         .monument-health-bar-full#monument-health-bar-1
+
+  #death-overlay style="display:none"
+    #death-text
+    #death-counter
+
+  #game-over-overlay style="display:none"
+    #game-over-text
+
+  #menu style="display:none"
+    .menu-content
+      h2 Menu
+      button#leave-button Leave Game
+      button#resume-button Resume
+
+  #menu-button Menu

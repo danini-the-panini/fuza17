@@ -30,19 +30,25 @@ class GamesChannel < ApplicationCable::Channel
       ]
     }
 
-    player = game.players.find_or_create_by(user_id: current_user.id) do |p|
-      p.last_state = initial_state
-      p.team = team_index
+    player = if game.in_progress?
+      game.players.find_or_create_by(user_id: current_user.id) do |p|
+        p.last_state = initial_state
+        p.team = team_index
 
-      ActionCable.server.broadcast channel_name,
-                                   type: 'player_joined',
-                                   player: {
-                                     id: current_user.id,
-                                     name: current_user.name,
-                                     time: time.to_f,
-                                     state: p.last_state
-                                   }
+        ActionCable.server.broadcast channel_name,
+                                     type: 'player_joined',
+                                     player: {
+                                       id: current_user.id,
+                                       name: current_user.name,
+                                       time: time.to_f,
+                                       state: p.last_state
+                                     }
+      end
+    else
+      game.players.find_by(user_id: current_user.id)
     end
+
+    return if player.nil?
 
     ActionCable.server.broadcast user_channel_name,
                                  type: 'player_setup',
@@ -52,7 +58,9 @@ class GamesChannel < ApplicationCable::Channel
                                    time: time.to_f,
                                    state: player.last_state
                                  },
-                                 game_state: game.state
+                                 game_state: game.state,
+                                 game_over: game.over?,
+                                 winner: game.winner
 
     players = game.players.where.not(user_id: current_user.id).map do |p|
       {
@@ -90,6 +98,9 @@ class GamesChannel < ApplicationCable::Channel
 
   def send_action(action)
     game = find_game
+
+    return unless game.in_progress?
+
     player = game.players.find_by(user: current_user)
     time = Time.now
 
@@ -199,6 +210,14 @@ class GamesChannel < ApplicationCable::Channel
                                    action: action,
                                    game_state: game.state
 
+      if game.state['monument_hps'][monument_id] <= 0
+        game.status = :over
+        game.winner = 1 - monument_id
+        ActionCable.server.broadcast channel_name,
+                                     type: 'game_over',
+                                     winner: game.winner
+      end
+
       source_player.update(last_action: nil)
       game.save!
       return
@@ -252,12 +271,15 @@ class GamesChannel < ApplicationCable::Channel
   end
 
   def leave_game
+    game = find_game
     player = game.players.find_by(user: current_user)
-    player.destroy
 
-    ActionCable.server.broadcast channel_name,
-                                 type: 'player_left',
-                                 player: { id: current_user.id }
+    if game.in_progress?
+      player.destroy
+      ActionCable.server.broadcast channel_name,
+                                   type: 'player_left',
+                                   player: { id: current_user.id }
+    end
   end
 
   private

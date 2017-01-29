@@ -12,7 +12,11 @@ class GamesController < ApplicationController
   end
 
   def create
-    @game = current_user.games.create(game_params)
+    @game = current_user.games.build(game_params)
+    @game.status = :in_progress
+    @game.winner = nil
+    @game.state = Game.default_state
+    @game.save!
     redirect_to game_path(@game)
   end
 

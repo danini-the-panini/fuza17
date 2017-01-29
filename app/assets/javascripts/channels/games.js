@@ -57,6 +57,7 @@ $(document).on('turbolinks:load', () => {
   let otherPlayersSetUp = false;
 
   let gameState;
+  let gameIsOver = false;
 
   const tmpVector3 = new THREE.Vector3();
 
@@ -166,6 +167,14 @@ $(document).on('turbolinks:load', () => {
     projectile.targetObject(target, getTimePassed(dataPlayer.time));
     gameEngine.addProjectile(projectile);
     projectile.onFinishedMoving(onHitCallback);
+  }
+
+  function gameOver(winner) {
+    gameIsOver = true;
+    const victory = winner === thisPlayer.team;
+    const resultText =
+    $('#game-over-overlay').show().addClass(victory ? 'is-victorious' : 'is-defeated');
+    $('#game-over-text').text(victory ? 'Victory!' : 'Defeat!');
   }
 
   function performAction(action, dataPlayer, player) {
@@ -295,7 +304,7 @@ $(document).on('turbolinks:load', () => {
         timeOffset = (data.player.time * 1000.0) - thisTime;
         thisPlayer.onFinishedMoving(() => {
           navigateToNextPoint();
-        })
+        });
         if (thisPlayer.state.dead) {
           thisPlayer.die();
           respawnLater(thisPlayer);
@@ -309,6 +318,11 @@ $(document).on('turbolinks:load', () => {
         gameEngine.addPlayer(thisPlayer);
         gameEngine.setThisPlayer(thisPlayer);
         gameEngine.followPlayer(thisPlayer);
+
+        if (data.game_over) {
+          gameOver(data.winner);
+        }
+
         isSetUp = true;
         break;
       case 'other_players':
@@ -336,8 +350,11 @@ $(document).on('turbolinks:load', () => {
         }
         break;
       case 'player_action':
-        if (!isSetUp || !otherPlayersSetUp) break;
+        if (!isSetUp || !otherPlayersSetUp || gameIsOver) break;
         performAction(data.action, data.player, players[data.player.id]);
+        break;
+      case 'game_over':
+        gameOver(data.winner);
         break;
       default:
         break;
@@ -345,6 +362,7 @@ $(document).on('turbolinks:load', () => {
     },
 
     sendAction(action) {
+      if (gameIsOver) return;
       this.perform('send_action', action);
     } ,
 
@@ -387,7 +405,7 @@ $(document).on('turbolinks:load', () => {
   });
 
   function inRange(obj1, obj2, range) {
-    tmpVector3.copy(obj1).sub(obj2);
+    tmpVector3.copy(obj1.position).sub(obj2.position);
     if (tmpVector3.lengthSq() > range * range) return false;
     return true;
   }
@@ -449,7 +467,16 @@ $(document).on('turbolinks:load', () => {
   });
 
   leaveButton.on('click', evt => {
-    App.game.leaveGame();
+    if (gameIsOver) {
+      Turbolinks.visit('/games');
+    } else {
+      App.game.leaveGame();
+    }
+    evt.preventDefault();
+    evt.stopPropagation();
+  });
+
+  $('#game-over-button').on('click', evt => {
     evt.preventDefault();
     evt.stopPropagation();
   });
