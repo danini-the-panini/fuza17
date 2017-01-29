@@ -48,7 +48,7 @@ $(document).on('turbolinks:load', () => {
   let timeOffset = 0.0;
 
   function getClientTime(serverTime) {
-    serverTime * 1000.0 - timeOffset;
+    return serverTime * 1000.0 - timeOffset;
   }
 
   function getTimePassed(startTime) {
@@ -138,6 +138,7 @@ $(document).on('turbolinks:load', () => {
     setTimeout(() => {
       if (!player.dead) return;
       const timePassed = getTimePassed(player.state.death_time);
+      console.log(spawnTime, player.state.death_time, timePassed);
       deathCounter.text(Math.round((spawnTime - timePassed) / 1000));
       App.game.sendAction({
         type: 'player_respawn',
@@ -253,7 +254,7 @@ $(document).on('turbolinks:load', () => {
           respawnLater(player);
           deathText.text(`${killer.name} killed you!`);
           deathOverlay.show();
-          spawnTime = parseFloat(action.spawn_time, 10) * 1000;
+          spawnTime = parseFloat(action.spawn_time) * 1000;
           deathCounter.text(Math.floor(spawnTime / 1000));
           gameEngine.followPlayer(killer);
         } else {
