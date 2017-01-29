@@ -34,7 +34,7 @@ module.exports = class Map extends THREE.Object3D {
     const texture = new THREE.TextureLoader().load('/assets/floor.png');
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(20, 20);
+    texture.repeat.set(16, 16);
     this.floor = new THREE.Mesh(
       new THREE.BoxGeometry(128, 128, 1),
       new THREE.MeshPhongMaterial({ color: 0x00ff00, map: texture })
