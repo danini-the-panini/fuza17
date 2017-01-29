@@ -54,8 +54,9 @@ module.exports = class GameEngine {
 
     this.canvasPosition = $(canvas).position();
     this.rayCaster = new THREE.Raycaster();
-    $(canvas).on('click', evt => {
+    $(window).on('click', evt => {
       this.mouseClicked(evt);
+      evt.preventDefault();
     });
 
     this.players = new THREE.Group();

@@ -433,15 +433,21 @@ $(document).on('turbolinks:load', () => {
     }
   });
 
-  leaveButton.on('click', () => {
+  leaveButton.on('click', evt => {
     App.game.leaveGame();
+    evt.preventDefault();
+    evt.stopPropagation();
   });
 
-  resumeButton.on('click', () => {
+  resumeButton.on('click', evt => {
     gameMenu.toggle();
+    evt.preventDefault();
+    evt.stopPropagation();
   });
 
-  menuButton.on('click', () => {
+  menuButton.on('click', evt => {
     gameMenu.toggle();
+    evt.preventDefault();
+    evt.stopPropagation();
   })
 });

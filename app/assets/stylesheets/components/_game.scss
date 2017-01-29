@@ -1,5 +1,9 @@
 html.page-game-show {
   overflow: hidden;
+
+  * {
+    cursor: default;
+  }
 }
 
 .game {
