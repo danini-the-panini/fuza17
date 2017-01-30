@@ -269,6 +269,11 @@ $(document).on('turbolinks:load', () => {
           gameEngine.followPlayer(killer);
         } else {
           deleteHudForPlayer(player);
+          gameEngine.particleSystem.createExplosion(
+            new THREE.MeshLambertMaterial({ color: Player.TEAM_COLORS[player.team]}),
+            player.position,
+            0.004, 0.008
+          );
         }
         updateScoreCard();
       }
