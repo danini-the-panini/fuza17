@@ -58,10 +58,15 @@ module.exports = class GameEngine {
 
     this.canvasPosition = $(canvas).position();
     this.rayCaster = new THREE.Raycaster();
+    this.mousePosition = new THREE.Vector2();
     $('#game').on('click', evt => {
       if (evt.which !== 1) return;
       this.mouseClicked(evt);
       evt.preventDefault();
+    });
+
+    $('#game').on('mousemove', evt => {
+      this.mouseMoved(evt);
     });
 
     this.players = new THREE.Group();
@@ -92,17 +97,19 @@ module.exports = class GameEngine {
     this.updateHandler = handler;
   }
 
-  mouseClicked(evt) {
-    if (!this.mouseClickHandler) return;
-
-    const mousePosition = new THREE.Vector2(
+  mouseMoved(evt) {
+    this.mousePosition.set(
       ((evt.clientX - this.canvasPosition.left) / this.canvas.width) * 2 - 1,
       -((evt.clientY - this.canvasPosition.top) / this.canvas.height) * 2 + 1
     );
+  }
 
-    const floorIntersection = this.getIntersection(mousePosition, [this.map.floor]);
-    const playerIntersection = this.getIntersection(mousePosition, this.getOtherPlayers());
-    const monumentIntersection = this.map.monuments ? this.getIntersection(mousePosition, this.map.monuments) : false;
+  mouseClicked(evt) {
+    if (!this.mouseClickHandler) return;
+
+    const floorIntersection = this.getIntersection(this.mousePosition, [this.map.floor]);
+    const playerIntersection = this.getIntersection(this.mousePosition, this.getOtherPlayers());
+    const monumentIntersection = this.map.monuments ? this.getIntersection(this.mousePosition, this.map.monuments) : false;
 
     if (monumentIntersection) {
       const monument = this.getParentOfType(monumentIntersection.object, Monument);
@@ -116,6 +123,13 @@ module.exports = class GameEngine {
       const point = floorIntersection.point;
       this.mouseClickHandler(point);
       return;
+    }
+  }
+
+  getMouseFloorIntersection() {
+    const floorIntersection = this.getIntersection(this.mousePosition, [this.map.floor]);
+    if (floorIntersection) {
+      return floorIntersection.point;
     }
   }
 

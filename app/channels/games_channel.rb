@@ -26,6 +26,13 @@ class GamesChannel < ApplicationCable::Channel
           range: 10.0,
           last_hit: time.to_f,
           damage: 10.0
+        },
+        {
+          cooldown: 0.5,
+          type: 'point',
+          range: 20.0,
+          last_hit: time.to_f,
+          damage: 20.0
         }
       ]
     }
@@ -120,7 +127,7 @@ class GamesChannel < ApplicationCable::Channel
       state['x'] = action['position']['x']
       state['y'] = action['position']['y']
       save_action = true
-    when 'target_player', 'target_monument'
+    when 'target_player', 'target_monument', 'fire_grenade'
       return if state['dead']
       state['x'] = action['point']['x']
       state['y'] = action['point']['y']

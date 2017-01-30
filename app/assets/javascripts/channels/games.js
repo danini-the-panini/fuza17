@@ -4,6 +4,7 @@ const THREE = require('three');
 const GameEngine = require('./game_engine');
 const Player = require('./player');
 const HomingMissile = require('./homingMissile');
+const Grenade = require('./grenade');
 
 $(document).on('turbolinks:load', () => {
   if (App.game) {
@@ -174,6 +175,14 @@ $(document).on('turbolinks:load', () => {
     projectile.onFinishedMoving(() => onHitCallback(projectile));
   }
 
+  function fireGrenade(action, dataPlayer, player, target, onHitCallback) {
+    const ability = player.abilities[action.ability_index];
+    const projectile = new Grenade(action.hit_id, ability, player.position, target, player.team);
+    projectile.targetPoint(target, getTimePassed(dataPlayer.time));
+    gameEngine.addProjectile(projectile);
+    projectile.onFinishedMoving(() => onHitCallback(projectile));
+  }
+
   function gameOver(winner) {
     gameIsOver = true;
 
@@ -219,6 +228,27 @@ $(document).on('turbolinks:load', () => {
             hit_id: action.hit_id,
             player_id: action.target_id
           });
+        });
+      }
+      break;
+    case 'fire_grenade':
+      {
+        player.moving = false;
+        const target = tmpVector3.set(action.target_point.x, action.target_point.y, 0);
+        const ability = player.abilities[action.ability_index];
+        fireGrenade(action, dataPlayer, player, target, projectile => {
+          gameEngine.particleSystem.createExplosion(
+            new THREE.MeshLambertMaterial({ color: Player.TEAM_COLORS[player.team]}),
+            projectile.position,
+            0.001, 0.004, 100
+          );
+          possibleHits[action.hit_id] = true;
+          // App.game.sendAction({
+          //   type: 'player_hit',
+          //   damage: ability.damage,
+          //   hit_id: action.hit_id,
+          //   player_id: action.target_id
+          // });
         });
       }
       break;
@@ -434,8 +464,8 @@ $(document).on('turbolinks:load', () => {
     navigateToNextPoint();
   });
 
-  function inRange(obj1, obj2, range) {
-    tmpVector3.copy(obj1.position).sub(obj2.position);
+  function inRange(a, b, range) {
+    tmpVector3.copy(a).sub(b);
     if (tmpVector3.lengthSq() > range * range) return false;
     return true;
   }
@@ -443,9 +473,25 @@ $(document).on('turbolinks:load', () => {
   function canUseAbility(ability, target = null) {
     const time = +(new Date());
     if (time - ability.last_hit < ability.cooldown) return false;
-    if (target && ability.type === 'target') {
-      if (!inRange(thisPlayer, target, ability.range)) return false;
+    if (target && ability.type !== 'direction') {
+      if (!inRange(thisPlayer.position, target, ability.range)) return false;
     }
+    return true;
+  }
+
+  function triggerGrenadeLaunch() {
+    const abilityIndex = 0;
+    const ability = thisPlayer.abilities[abilityIndex];
+    const target = gameEngine.getMouseFloorIntersection();
+    if (!canUseAbility(ability, target)) return;
+    thisPlayer.moving = false;
+    // gameEngine.scene.remove(visualNavPath);
+    App.game.sendAction({
+      type: 'fire_grenade',
+      point: { x: thisPlayer.position.x, y: thisPlayer.position.y },
+      target_point: { x: target.x, y: target.y },
+      ability_index: abilityIndex
+    });
     return true;
   }
 
@@ -453,7 +499,7 @@ $(document).on('turbolinks:load', () => {
     if (player === thisPlayer || player.team === thisPlayer.team) return false;
     const abilityIndex = 0;
     const ability = thisPlayer.abilities[abilityIndex];
-    if (!canUseAbility(ability, player)) return;
+    if (!canUseAbility(ability, player.position)) return;
     thisPlayer.moving = false;
     // gameEngine.scene.remove(visualNavPath);
     App.game.sendAction({
@@ -491,8 +537,11 @@ $(document).on('turbolinks:load', () => {
   });
 
   $(document).keyup(function(e) {
+    const c = String.fromCharCode(e.keyCode).toUpperCase();
     if (e.keyCode == 27) { // escape key maps to keycode `27`
       gameMenu.toggle();
+    } else if (c === 'Q') {
+      triggerGrenadeLaunch();
     }
   });
 

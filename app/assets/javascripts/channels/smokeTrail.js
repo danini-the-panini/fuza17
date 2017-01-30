@@ -4,7 +4,6 @@ const tmpVector3 = new THREE.Vector3();
 
 const SMOKE_GEOM = new THREE.SphereGeometry(1);
 
-
 const SMOKE_TIME = 20;
 
 function createSmokeTrail() {
@@ -18,37 +17,67 @@ function findScene(object) {
   return findScene(object.parent);
 }
 
+const SJMIN = 0.2;
+const SJMAX = 0.4;
 function rando(min, max) {
   const range = max - min;
   return Math.random() * range + min;
 }
 
-function randomizeScale(object) {
-  const scale = rando(0.2, 0.4);
+function randomizeScale(object, sjmin, sjmax) {
+  const scale = rando(sjmin, sjmax);
   object.scale.set(scale, scale, scale);
 }
 
 const PJMIN = -0.1;
 const PJMAX = 0.1;
-function jitterPosition(object) {
-  tmpVector3.set(rando(PJMIN, PJMAX), rando(PJMIN, PJMAX), rando(PJMIN, PJMAX));
+function jitterPosition(object, pjmin, pjmax) {
+  tmpVector3.set(rando(pjmin, pjmax), rando(pjmin, pjmax), rando(pjmin, pjmax));
   object.position.add(tmpVector3);
 }
 
-function smokeTrail(klass) {
+function getProp(object, key, defaultValue = null) {
+  if (typeof object[key] === 'undefined') return defaultValue;
+  return object[key];
+}
+
+const OPACITY_CHANGE = -0.02;
+const SCALE_CHANGE = 0.0001;
+const TRAIL_MAX_AGE = 1000;
+
+function smokeTrail(klass, options = {}) {
+  const pjmin = getProp(options, 'pjmin', PJMIN);
+  const pjmax = getProp(options, 'pjmax', PJMAX);
+
+  const sjmin = getProp(options, 'sjmin', SJMIN);
+  const sjmax = getProp(options, 'sjmax', SJMAX);
+
+  const spawnTime = getProp(options, 'spawnTime', SMOKE_TIME);
+  const distance = getProp(options, 'distance', 1);
+
+  const opacityChange = getProp(options, 'opacityChange', OPACITY_CHANGE);
+  const s = getProp(options, 'scaleChange', SCALE_CHANGE);
+  const scaleChange = new THREE.Vector3(s, s, s);
+
+  const maxAge = getProp(options, 'maxAge', TRAIL_MAX_AGE);
+
   const originalUpdate = klass.prototype.update;
   klass.prototype.update = function update(delta) {
     originalUpdate.call(this, delta);
     const lastSmoke = this.lastSmoke || 0;
     this.smokeTrails = this.smokeTrails || [];
     const now = +(new Date());
-    if (now - lastSmoke > SMOKE_TIME) {
+    if (now - lastSmoke > spawnTime) {
       const smokeMesh = createSmokeTrail();
-      smokeMesh.birthtime = now;
-      this.getDirection(tmpVector3).negate().multiplyScalar(1).add(this.position);
+      smokeMesh._birthtime = now;
+      smokeMesh._opacityChange = opacityChange;
+      smokeMesh._scaleChange = scaleChange;
+      smokeMesh._maxAge = maxAge;
+
+      this.getDirection(tmpVector3).negate().multiplyScalar(distance).add(this.position);
       smokeMesh.position.copy(tmpVector3);
-      randomizeScale(smokeMesh);
-      jitterPosition(smokeMesh);
+      randomizeScale(smokeMesh, sjmin, sjmax);
+      jitterPosition(smokeMesh, pjmin, pjmax);
       const scene = findScene(this);
       if (scene) scene.add(smokeMesh);
       smokeTrail.allTrails.push(smokeMesh);
@@ -61,23 +90,18 @@ function smokeTrail(klass) {
 
 smokeTrail.allTrails = [];
 
-const OPACITY_CHANGE = -0.02;
-const S = 0.0001;
-const SCALE_CHANGE = new THREE.Vector3(S, S, S);
-const TRAIL_MAX_AGE = 1000;
-
 smokeTrail.update = function update(delta) {
   const now = +(new Date());
   let i = this.allTrails.length;
   while (i--) {
     const trail = this.allTrails[i];
-    const trailAge = now - trail.birthtime;
-    if (trailAge > TRAIL_MAX_AGE) {
+    const trailAge = now - trail._birthtime;
+    if (trailAge > trail._maxAge) {
       if (trail.parent) trail.parent.remove(trail);
       this.allTrails.splice(i, 1);
     } else {
-      trail.material.opacity += OPACITY_CHANGE;
-      trail.scale.add(tmpVector3.copy(SCALE_CHANGE).multiplyScalar(delta));
+      trail.material.opacity += trail._opacityChange;
+      trail.scale.add(tmpVector3.copy(trail._scaleChange).multiplyScalar(delta));
     }
   }
 }
