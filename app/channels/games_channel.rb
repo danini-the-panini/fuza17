@@ -179,7 +179,7 @@ class GamesChannel < ApplicationCable::Channel
                                        type: 'player_died',
                                        spawn_time: Player::SPAWN_TIME,
                                        killer_id: hit.source_id,
-                                       killer_state: killer_state
+                                       killer_kills: killer_state['kills']
                                      }
         killer.update(last_state: killer_state)
       end

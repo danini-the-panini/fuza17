@@ -4,6 +4,7 @@ OBJLoader(THREE);
 
 const Player = require('./player');
 const moveToTarget = require('./moveToTarget');
+const smokeTrail = require('./smokeTrail');
 
 class HomingMissile extends THREE.Object3D {
   static SPEED = 0.015
@@ -60,4 +61,5 @@ class HomingMissile extends THREE.Object3D {
 }
 
 moveToTarget(HomingMissile);
+smokeTrail(HomingMissile);
 module.exports = HomingMissile;

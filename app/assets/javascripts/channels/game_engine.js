@@ -3,6 +3,8 @@ const Map = require('./map');
 const Player = require('./player');
 const Monument = require('./monument');
 
+const smokeTrail = require('./smokeTrail');
+
 module.exports = class GameEngine {
   static CAMERA_OFFSET = new THREE.Vector3(0, -5, 10)
   static LIGHT_OFFSET = new THREE.Vector3(10, 4, 20)
@@ -195,6 +197,8 @@ module.exports = class GameEngine {
       this.camera.position.copy(this.followingPlayer.position).add(GameEngine.CAMERA_OFFSET);
       this.camera.lookAt(this.followingPlayer.position);
     }
+
+    smokeTrail.update(delta);
 
     this.lastUpdate = now;
 

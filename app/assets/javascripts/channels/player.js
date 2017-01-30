@@ -25,8 +25,7 @@ class Player extends THREE.Object3D {
                                 new THREE.MeshBasicMaterial({
                                                               color: 0xff00ff,
                                                               wireframe: true,
-                                                              opacity: 0,
-                                                              transparent: true
+                                                              visible: false
                                                             }));
     hitMesh.up.set(0, 0, 1);
     this.add(hitMesh);

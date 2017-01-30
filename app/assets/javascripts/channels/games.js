@@ -248,7 +248,7 @@ $(document).on('turbolinks:load', () => {
     case 'player_died':
       {
         const killer = players[action.killer_id];
-        killer.setState(action.killer_state);
+        killer.state.kills = action.killer_kills;
         player.die();
         if (player === thisPlayer) {
           respawnLater(player);
