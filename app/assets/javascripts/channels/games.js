@@ -176,6 +176,16 @@ $(document).on('turbolinks:load', () => {
 
   function gameOver(winner) {
     gameIsOver = true;
+
+    const loser = 1 - winner;
+    const loserMonument = gameEngine.map.monuments[loser];
+    gameEngine.map.remove(loserMonument);
+    gameEngine.particleSystem.createExplosion(
+      new THREE.MeshLambertMaterial({ color: Player.TEAM_COLORS[loser]}),
+      loserMonument.position,
+      0.006, 0.010, 1000
+    );
+
     const victory = winner === thisPlayer.team;
     const resultText =
     $('#game-over-overlay').show().addClass(victory ? 'is-victorious' : 'is-defeated');
