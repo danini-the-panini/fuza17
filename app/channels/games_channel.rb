@@ -32,7 +32,8 @@ class GamesChannel < ApplicationCable::Channel
           type: 'point',
           range: 20.0,
           last_hit: time.to_f,
-          damage: 20.0
+          damage: 20.0,
+          radius: 2.0
         }
       ]
     }
@@ -143,8 +144,24 @@ class GamesChannel < ApplicationCable::Channel
       end
       save_action = true
     when 'player_hit'
+      hit_id = action['hit_id']
+
+      hit = Hit.find_by(hit_identifier: hit_id)
+      return if hit.nil?
+      source_player = game.players.find_by(user_id: hit.source_id)
+      hit.destroy
+
       target_player = game.players.find_by(user_id: action['player_id'])
-      target_state = target_player.last_state
+      damage_player(target_player, action['damage'], source_player, action, time)
+
+
+      target_player.save!
+      source_player.last_action = nil
+      source_player.save!
+      return
+    when 'players_hit'
+      puts 'ACTION'
+      p action
 
       hit_id = action['hit_id']
 
@@ -153,46 +170,36 @@ class GamesChannel < ApplicationCable::Channel
       source_player = game.players.find_by(user_id: hit.source_id)
       hit.destroy
 
-      target_state['hp'] -= action['damage']
+      target_players = action['players_affected'].map { |(target_id, damage_done)|
+        [game.players.find_by(user_id: target_id), damage_done]
+      }.select { |(tp, damage_done)|
+        damage_player(tp, damage_done, source_player, action, time, rebroadcast: false)
+      }
 
       ActionCable.server.broadcast channel_name,
                                    type: 'player_action',
                                    player: {
-                                     id: target_player.user_id,
-                                     name: target_player.user.name,
-                                     state: target_state,
+                                     id: source_player.user_id,
+                                     name: source_player.user.name,
+                                     state: source_player.last_state,
                                      time: time.to_f
                                    },
-                                   action: action
+                                   action: {
+                                     hit_id: hit_id,
+                                     type: 'players_hit',
+                                     players_affected: target_players.map { |(p,_)|
+                                       [ p.user_id, p.last_state['hp'] ]
+                                     }.to_h
+                                   }
 
-      if target_state['hp'] <= 0.0
-        target_state['dead'] = true
-        target_state['deaths'] += 1
-        target_state['death_time'] = time.to_f
+      target_players.each { |(tp,_)|
+        check_player_death(tp, source_player, time)
+      }.each { |(tp,_)|
+        tp.save!
+      }
 
-        killer = Player.find_by(user_id: hit.source_id)
-        killer_state = killer.last_state
-        killer_state['kills'] += 1
-
-        ActionCable.server.broadcast channel_name,
-                                     type: 'player_action',
-                                     player: {
-                                       id: target_player.user_id,
-                                       name: target_player.user.name,
-                                       state: target_state,
-                                       time: time.to_f
-                                     },
-                                     action: {
-                                       type: 'player_died',
-                                       spawn_time: Player::SPAWN_TIME,
-                                       killer_id: hit.source_id,
-                                       killer_kills: killer_state['kills']
-                                     }
-        killer.update(last_state: killer_state)
-      end
-
-      target_player.update(last_state: target_state)
-      source_player.update(last_action: nil)
+      source_player.last_action = nil
+      source_player.save!
       return
     when 'monument_hit'
       monument_id = action['monument_id']
@@ -319,5 +326,58 @@ class GamesChannel < ApplicationCable::Channel
     else
       rand > 0.5 ? 0 : 1
     end
+  end
+
+  def damage_player(target_player, damage_done, source_player, action, time, rebroadcast: true)
+    target_state = target_player.last_state
+    return false if target_state['dead']
+    target_state['hp'] -= damage_done
+
+    if rebroadcast
+      ActionCable.server.broadcast channel_name,
+                                   type: 'player_action',
+                                   player: {
+                                     id: target_player.user_id,
+                                     name: target_player.user.name,
+                                     state: target_state,
+                                     time: time.to_f
+                                   },
+                                   action: action
+
+      check_player_death(target_player, source_player, time)
+    end
+
+    true
+  end
+
+  def check_player_death(target_player, source_player, time)
+    target_state = target_player.last_state
+
+    return false if target_state['dead']
+
+    if target_state['hp'] <= 0.0
+      target_state['dead'] = true
+      target_state['deaths'] += 1
+      target_state['death_time'] = time.to_f
+
+      source_player.last_state['kills'] += 1
+
+      ActionCable.server.broadcast channel_name,
+                                   type: 'player_action',
+                                   player: {
+                                     id: target_player.user_id,
+                                     name: target_player.user.name,
+                                     state: target_state,
+                                     time: time.to_f
+                                   },
+                                   action: {
+                                     type: 'player_died',
+                                     spawn_time: Player::SPAWN_TIME,
+                                     killer_id: source_player.user_id,
+                                     killer_kills: source_player.last_state['kills']
+                                   }
+      return true
+    end
+    false
   end
 end

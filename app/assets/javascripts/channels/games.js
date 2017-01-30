@@ -201,6 +201,14 @@ $(document).on('turbolinks:load', () => {
     $('#game-over-text').text(victory ? 'Victory!' : 'Defeat!');
   }
 
+  function getDamageDone(player, ability, position) {
+    const dist = tmpVector3.copy(position).sub(player.position).length();
+    if (dist > ability.radius) return 0;
+    console.log(dist);
+    console.log(ability);
+    return (1.0 - dist / ability.radius) * ability.damage;
+  }
+
   function performAction(action, dataPlayer, player) {
     player.setState(dataPlayer.state);
     switch(action.type) {
@@ -243,12 +251,25 @@ $(document).on('turbolinks:load', () => {
             0.001, 0.004, 100
           );
           possibleHits[action.hit_id] = true;
-          // App.game.sendAction({
-          //   type: 'player_hit',
-          //   damage: ability.damage,
-          //   hit_id: action.hit_id,
-          //   player_id: action.target_id
-          // });
+          const affectedPlayers = {};
+          let numAffectedPlayers = 0;
+          for (let id in players) {
+            if (!players.hasOwnProperty(id)) continue;
+            const p = players[id];
+            if (p.team === player.team) continue;
+            const damage = getDamageDone(p, ability, projectile.position);
+            if (damage <= 0) continue;
+            affectedPlayers[id] = damage;
+            numAffectedPlayers++;
+          }
+          console.log(affectedPlayers);
+          if (numAffectedPlayers > 0) {
+            App.game.sendAction({
+              type: 'players_hit',
+              hit_id: action.hit_id,
+              players_affected: affectedPlayers
+            });
+          }
         });
       }
       break;
@@ -278,12 +299,28 @@ $(document).on('turbolinks:load', () => {
       {
         if (!possibleHits[action.hit_id]) return;
         const targetPlayer = players[action.player_id];
-        console.log('HP: ', player.hp);
         delete possibleHits[action.hit_id];
         if (player === thisPlayer) {
           updateThisPlayerHud();
         } else {
           updateHudForPlayer(player);
+        }
+      }
+      break;
+    case 'players_hit':
+      {
+        if (!possibleHits[action.hit_id]) return;
+        delete possibleHits[action.hit_id];
+        for (let id in action.players_affected) {
+          if (!action.players_affected.hasOwnProperty(id)) continue;
+          if (!players.hasOwnProperty(id)) continue;
+          const p = players[id];
+          p.state.hp = action.players_affected[id];
+          if (p === thisPlayer) {
+            updateThisPlayerHud();
+          } else {
+            updateHudForPlayer(p);
+          }
         }
       }
       break;
@@ -480,7 +517,7 @@ $(document).on('turbolinks:load', () => {
   }
 
   function triggerGrenadeLaunch() {
-    const abilityIndex = 0;
+    const abilityIndex = 1;
     const ability = thisPlayer.abilities[abilityIndex];
     const target = gameEngine.getMouseFloorIntersection();
     if (!canUseAbility(ability, target)) return;
