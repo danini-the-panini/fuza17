@@ -168,7 +168,7 @@ $(document).on('turbolinks:load', () => {
   function fireHomingMissile(action, dataPlayer, player, target, onHitCallback) {
     const ability = player.abilities[action.ability_index];
     tmpVector3.set(0, 0, 0.5).add(player.position);
-    const projectile = new HomingMissile(action.hit_id, ability, tmpVector3, target);
+    const projectile = new HomingMissile(action.hit_id, ability, tmpVector3, target, player.team);
     projectile.targetObject(target, getTimePassed(dataPlayer.time));
     gameEngine.addProjectile(projectile);
     projectile.onFinishedMoving(onHitCallback);

@@ -1,24 +1,33 @@
 const THREE = require('three');
+const OBJLoader = require('three-obj-loader');
+OBJLoader(THREE);
+
 const Player = require('./player');
 const moveToTarget = require('./moveToTarget');
 
 class HomingMissile extends THREE.Object3D {
-  static SPEED = 0.05
+  static SPEED = 0.015
   static HALF_UP = new THREE.Vector3(0, 0, 0.5)
 
-  constructor(hitId, ability, startingPoint, target) {
+  constructor(hitId, ability, startingPoint, target, team) {
     super();
 
-    const geometry = new THREE.SphereGeometry(0.15);
-    const material = new THREE.MeshBasicMaterial( { color: 0x00e9ff } );
-    const mesh = new THREE.Mesh( geometry, material );
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    mesh.up.set(0, 0, 1);
-    this.add(mesh);
+    this.up.set(0, 0, 1);
+    let loader = new THREE.OBJLoader();
+    loader.load('/assets/bullet.obj', (object) => {
+      object.traverse(child => {
+        child.castShadow = true;
+        child.receiveShadow = false;
+        if (child.material) {
+          child.material.color = new THREE.Color(Player.TEAM_COLORS[team]);
+        }
+      });
+      this.add(object);
+    });
 
     this.hitId = hitId;
     this.ability = ability;
+    this.team = team;
 
     this.position.copy(startingPoint);
     this.target = target;
@@ -34,6 +43,7 @@ class HomingMissile extends THREE.Object3D {
   update(delta) {
     if (this.moving) {
       this.moveTarget.copy(this.getTargetSurface()).add(HomingMissile.HALF_UP);
+      this.lookAt(this.moveTarget);
       this.moveOverTime(delta);
     }
   }
