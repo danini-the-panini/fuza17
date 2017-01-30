@@ -171,7 +171,7 @@ $(document).on('turbolinks:load', () => {
     const projectile = new HomingMissile(action.hit_id, ability, tmpVector3, target, player.team);
     projectile.targetObject(target, getTimePassed(dataPlayer.time));
     gameEngine.addProjectile(projectile);
-    projectile.onFinishedMoving(onHitCallback);
+    projectile.onFinishedMoving(() => onHitCallback(projectile));
   }
 
   function gameOver(winner) {
@@ -196,7 +196,12 @@ $(document).on('turbolinks:load', () => {
         player.moving = false;
         const targetPlayer = players[action.target_id];
         const ability = player.abilities[action.ability_index];
-        fireHomingMissile(action, dataPlayer, player, targetPlayer, () => {
+        fireHomingMissile(action, dataPlayer, player, targetPlayer, projectile => {
+          gameEngine.particleSystem.createExplosion(
+            new THREE.MeshLambertMaterial({ color: Player.TEAM_COLORS[player.team]}),
+            projectile.position,
+            0.001, 0.004, 100
+          );
           possibleHits[action.hit_id] = true;
           App.game.sendAction({
             type: 'player_hit',
@@ -213,7 +218,12 @@ $(document).on('turbolinks:load', () => {
         const targetTeam = 1 - player.team;
         const targetMonument = gameEngine.map.monuments[targetTeam];
         const ability = player.abilities[action.ability_index];
-        fireHomingMissile(action, dataPlayer, player, targetMonument, () => {
+        fireHomingMissile(action, dataPlayer, player, targetMonument, projectile => {
+          gameEngine.particleSystem.createExplosion(
+            new THREE.MeshLambertMaterial({ color: Player.TEAM_COLORS[player.team]}),
+            projectile.position,
+            0.002, 0.006
+          );
           possibleHits[action.hit_id] = true;
           App.game.sendAction({
             type: 'monument_hit',

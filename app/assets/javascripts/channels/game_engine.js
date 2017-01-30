@@ -5,6 +5,8 @@ const Monument = require('./monument');
 
 const smokeTrail = require('./smokeTrail');
 
+const ParticleSystem = require('./particleSystem');
+
 module.exports = class GameEngine {
   static CAMERA_OFFSET = new THREE.Vector3(0, -5, 10)
   static LIGHT_OFFSET = new THREE.Vector3(10, 4, 20)
@@ -67,6 +69,9 @@ module.exports = class GameEngine {
 
     this.projectiles = new THREE.Group();
     this.scene.add(this.projectiles);
+
+    this.particleSystem = new ParticleSystem();
+    this.scene.add(this.particleSystem);
 
     this._tmpVector = new THREE.Vector3();
   }
@@ -199,6 +204,7 @@ module.exports = class GameEngine {
     }
 
     smokeTrail.update(delta);
+    this.particleSystem.update(delta);
 
     this.lastUpdate = now;
 
