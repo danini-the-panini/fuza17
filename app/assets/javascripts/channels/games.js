@@ -402,7 +402,7 @@ $(document).on('turbolinks:load', () => {
       const projectile = gameEngine.projectiles.children.find(p => {
         return p.hitId === data.hit_id;
       });
-      if (projectile.constructor === Missile) {
+      if (projectile && projectile.constructor === Missile) {
         projectile.stopMoving();
       }
       if (player === thisPlayer) {
@@ -439,7 +439,7 @@ $(document).on('turbolinks:load', () => {
       const projectile = gameEngine.projectiles.children.find(p => {
         return p.hitId === data.hit_id;
       });
-      if (projectile.constructor === Missile) {
+      if (projectile && projectile.constructor === Missile) {
         projectile.stopMoving();
       }
     },
