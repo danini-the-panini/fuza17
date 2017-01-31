@@ -426,10 +426,14 @@ $(document).on('turbolinks:load', () => {
         data.players.forEach(p => {
           players[p.id] = new Player(p.id, p.name, p.state);
           gameEngine.addPlayer(players[p.id]);
-          updateHudForPlayer(players[p.id]);
 
           if (p.action) {
             performAction(p.action, p, players[p.id]);
+          }
+          if (players[p.id].state.dead) {
+            players[p.id].die();
+          } else {
+            updateHudForPlayer(players[p.id]);
           }
         });
         updateScoreCard();
