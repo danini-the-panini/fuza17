@@ -671,7 +671,7 @@ $(document).on('turbolinks:load', () => {
     if (player === thisPlayer || player.team === thisPlayer.team) return false;
     const abilityIndex = 0;
     const ability = thisPlayer.abilities[abilityIndex];
-    if (!canUseAbility(ability, player.position)) return;
+    if (!canUseAbility(ability, player.position)) return true;
     thisPlayer.moving = false;
     // gameEngine.scene.remove(visualNavPath);
     App.game.target_player(player, abilityIndex);
@@ -683,7 +683,7 @@ $(document).on('turbolinks:load', () => {
     const time = +(new Date());
     const abilityIndex = 0;
     const ability = thisPlayer.abilities[abilityIndex];
-    if (!canUseAbility(ability, monument.position)) return;
+    if (!canUseAbility(ability, monument.position)) return true;
     thisPlayer.moving = false;
     // gameEngine.scene.remove(visualNavPath);
     App.game.target_monument(abilityIndex);
