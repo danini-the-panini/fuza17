@@ -164,6 +164,7 @@ $(document).on('turbolinks:load', () => {
     projectile.targetObject(target, getTimePassed(dataPlayer.time));
     gameEngine.addProjectile(projectile);
     projectile.onFinishedMoving(() => onHitCallback(projectile));
+    return projectile;
   }
 
   function fireGrenade(action, dataPlayer, player, target, onHitCallback) {
@@ -172,6 +173,7 @@ $(document).on('turbolinks:load', () => {
     projectile.targetPoint(target, getTimePassed(dataPlayer.time));
     gameEngine.addProjectile(projectile);
     projectile.onFinishedMoving(() => onHitCallback(projectile));
+    return projectile;
   }
 
   function fireMissile(action, dataPlayer, player, direction, onHitCallback) {
@@ -181,6 +183,7 @@ $(document).on('turbolinks:load', () => {
     projectile.targetPoint(tmpVector3, getTimePassed(dataPlayer.time));
     gameEngine.addProjectile(projectile);
     projectile.onFinishedMoving(() => onHitCallback(projectile));
+    return projectile;
   }
 
   function gameOver(winner) {
@@ -342,13 +345,25 @@ $(document).on('turbolinks:load', () => {
       player.moving = false;
       const direction = tmpVector3.set(data.direction.x, data.direction.y, 0);
       const ability = player.abilities[data.ability_index];
-      fireMissile(data, data.player, player, direction, projectile => {
+      const missile = fireMissile(data, data.player, player, direction, projectile => {
         gameEngine.particleSystem.createExplosion(
           new THREE.MeshLambertMaterial({ color: Player.TEAM_COLORS[player.team]}),
           projectile.position,
           0.004, 0.008, 500
         );
-        possibleHits[data.hit_id] = true;
+      });
+      missile.onUpdate(() => {
+        for (let id in players) {
+          if (!players.hasOwnProperty(id)) continue;
+          const p = players[id];
+          if (p.team === player.team) continue;
+          const dist = tmpVector3.copy(p.position).sub(missile.position).setZ(0).length();
+          if (dist <= 1) {
+            possibleHits[data.hit_id] = true;
+            App.game.player_hit(p, data.hit_id, ability.damage);
+            return;
+          }
+        }
       });
     },
 
@@ -376,6 +391,12 @@ $(document).on('turbolinks:load', () => {
       if (!possibleHits[data.hit_id]) return;
       const targetPlayer = players[data.player_id];
       delete possibleHits[data.hit_id];
+      const projectile = gameEngine.projectiles.children.find(p => {
+        return p.hitId === data.hit_id;
+      });
+      if (projectile.constructor === Missile) {
+        projectile.stopMoving();
+      }
       if (player === thisPlayer) {
         updateThisPlayerHud();
       } else {
@@ -611,6 +632,7 @@ $(document).on('turbolinks:load', () => {
     const abilityIndex = 1;
     const ability = thisPlayer.abilities[abilityIndex];
     const target = gameEngine.getMouseFloorIntersection();
+    if (!target) return;
     if (!canUseAbility(ability, target)) return;
     thisPlayer.moving = false;
     // gameEngine.scene.remove(visualNavPath);
@@ -621,7 +643,9 @@ $(document).on('turbolinks:load', () => {
   function triggerMissileLaunch() {
     const abilityIndex = 2;
     const ability = thisPlayer.abilities[abilityIndex];
-    const direction = gameEngine.getMouseFloorIntersection().sub(thisPlayer.position).normalize();
+    const target = gameEngine.getMouseFloorIntersection();
+    if (!target) return;
+    const direction = target.sub(thisPlayer.position).normalize();
     if (!canUseAbility(ability)) return;
     thisPlayer.moving = false;
     // gameEngine.scene.remove(visualNavPath);
@@ -667,7 +691,7 @@ $(document).on('turbolinks:load', () => {
       gameMenu.toggle();
     } else if (c === 'Q') {
       triggerGrenadeLaunch();
-    } else if (c === 'E') {
+    } else if (c === 'W') {
       triggerMissileLaunch();
     }
   });

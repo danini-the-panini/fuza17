@@ -41,6 +41,10 @@ class Missile extends THREE.Object3D {
     this.speed = Missile.SPEED;
   }
 
+  onUpdate(handler) {
+    this.updateHandler = handler;
+  }
+
   getHeight() {
     return 0.5;
   }
@@ -49,6 +53,10 @@ class Missile extends THREE.Object3D {
     this.moveOverTime(delta);
     this._tmpVector3.copy(this.target).z += this.getHeight();
     this.lookAt(this._tmpVector3);
+
+    if (this.updateHandler) {
+      this.updateHandler();
+    }
   }
 }
 

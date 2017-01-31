@@ -8,6 +8,12 @@ module.exports = function arcTravel(klass) {
     this.finishMoveHandlers.push(handler);
   };
 
+  klass.prototype.stopMoving = function stopMoving() {
+    if (this.finishMoveHandlers) {
+      this.finishMoveHandlers.forEach(handler => handler());
+    }
+  }
+
   klass.prototype.getProgress = function getProgress() {
     tmpVector3.copy(this.position).sub(this.startingPoint).setZ(0);
     return Math.min(tmpVector3.length() / this.travelLength, 1.0000001);
@@ -30,8 +36,8 @@ module.exports = function arcTravel(klass) {
     tmpVector3.copy(this.travelVectorNorm).multiplyScalar(this.speed * timePassed);
     this.position.add(tmpVector3);
     this.position.z = this.getHeight() * 3;
-    if (this.getProgress() >= 1.0 && this.finishMoveHandlers) {
-      this.finishMoveHandlers.forEach(handler => handler());
+    if (this.getProgress() >= 1.0) {
+      this.stopMoving();
     }
   };
 
