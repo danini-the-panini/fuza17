@@ -106,7 +106,7 @@ $(document).on('turbolinks:load', () => {
 
   function updateThisPlayerHud() {
     const healthPercent = (thisPlayer.state.hp / MAX_HP) * 100.0;
-    thisPlayerHealthBar.text(`${thisPlayer.state.hp} / ${MAX_HP}`);
+    thisPlayerHealthBar.text(`${Math.round(thisPlayer.state.hp)} / ${MAX_HP}`);
     thisPlayerHealthBar.css('width', `${healthPercent}%`);
   }
 
@@ -125,7 +125,7 @@ $(document).on('turbolinks:load', () => {
     const hpPercent = (monumentHp / MAX_MONUMENT_HP) * 100.0;
     const monumentHpEl = $(`#monument-health-bar-${team}`);
     monumentHpEl.width(`${hpPercent}%`);
-    monumentHpEl.text(`${monumentHp} / ${MAX_MONUMENT_HP}`);
+    monumentHpEl.text(`${Math.round(monumentHp)} / ${MAX_MONUMENT_HP}`);
   }
 
   function updateAllMonumentHPs() {
