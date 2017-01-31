@@ -141,10 +141,7 @@ $(document).on('turbolinks:load', () => {
       const timePassed = getTimePassed(player.state.death_time);
       console.log(spawnTime, player.state.death_time, timePassed);
       deathCounter.text(Math.round((spawnTime - timePassed) / 1000));
-      App.game.sendAction({
-        type: 'player_respawn',
-        player_id: player.playerId
-      });
+      App.game.playerRespawn(player);
       respawnLater(player);
     }, 1000);
   }
@@ -153,17 +150,10 @@ $(document).on('turbolinks:load', () => {
     const nextPoint = navPath.shift();
     if (!nextPoint) {
       // gameEngine.scene.remove(visualNavPath);
-      App.game.sendAction({
-        type: 'player_finished_moving',
-        position: { x: thisPlayer.position.x, y: thisPlayer.position.y }
-      });
+      App.game.playerFinishedMoving();
       return;
     }
-    App.game.sendAction({
-      type: 'player_started_moving',
-      position: { x: thisPlayer.position.x, y: thisPlayer.position.y },
-      point: { x: nextPoint.x, y: nextPoint.y }
-    });
+    App.game.playerStartedMoving(nextPoint);
   }
 
   function fireHomingMissile(action, dataPlayer, player, target, onHitCallback) {
@@ -207,167 +197,6 @@ $(document).on('turbolinks:load', () => {
     console.log(dist);
     console.log(ability);
     return (1.0 - dist / ability.radius) * ability.damage;
-  }
-
-  function performAction(action, dataPlayer, player) {
-    player.setState(dataPlayer.state);
-    switch(action.type) {
-    case 'player_started_moving':
-      player.moveTo(action.point, getTimePassed(dataPlayer.time));
-      break;
-    case 'player_finished_moving':
-      player.moving = false;
-      break;
-    case 'target_player':
-      {
-        player.moving = false;
-        const targetPlayer = players[action.target_id];
-        const ability = player.abilities[action.ability_index];
-        fireHomingMissile(action, dataPlayer, player, targetPlayer, projectile => {
-          gameEngine.particleSystem.createExplosion(
-            new THREE.MeshLambertMaterial({ color: Player.TEAM_COLORS[player.team]}),
-            projectile.position,
-            0.001, 0.004, 100
-          );
-          possibleHits[action.hit_id] = true;
-          App.game.sendAction({
-            type: 'player_hit',
-            damage: ability.damage,
-            hit_id: action.hit_id,
-            player_id: action.target_id
-          });
-        });
-      }
-      break;
-    case 'fire_grenade':
-      {
-        player.moving = false;
-        const target = tmpVector3.set(action.target_point.x, action.target_point.y, 0);
-        const ability = player.abilities[action.ability_index];
-        fireGrenade(action, dataPlayer, player, target, projectile => {
-          gameEngine.particleSystem.createExplosion(
-            new THREE.MeshLambertMaterial({ color: Player.TEAM_COLORS[player.team]}),
-            projectile.position,
-            0.001, 0.004, 100
-          );
-          possibleHits[action.hit_id] = true;
-          const affectedPlayers = {};
-          let numAffectedPlayers = 0;
-          for (let id in players) {
-            if (!players.hasOwnProperty(id)) continue;
-            const p = players[id];
-            if (p.team === player.team) continue;
-            const damage = getDamageDone(p, ability, projectile.position);
-            if (damage <= 0) continue;
-            affectedPlayers[id] = damage;
-            numAffectedPlayers++;
-          }
-          console.log(affectedPlayers);
-          if (numAffectedPlayers > 0) {
-            App.game.sendAction({
-              type: 'players_hit',
-              hit_id: action.hit_id,
-              players_affected: affectedPlayers
-            });
-          }
-        });
-      }
-      break;
-    case 'target_monument':
-      {
-        player.moving = false;
-        const targetTeam = 1 - player.team;
-        const targetMonument = gameEngine.map.monuments[targetTeam];
-        const ability = player.abilities[action.ability_index];
-        fireHomingMissile(action, dataPlayer, player, targetMonument, projectile => {
-          gameEngine.particleSystem.createExplosion(
-            new THREE.MeshLambertMaterial({ color: Player.TEAM_COLORS[player.team]}),
-            projectile.position,
-            0.002, 0.006
-          );
-          possibleHits[action.hit_id] = true;
-          App.game.sendAction({
-            type: 'monument_hit',
-            damage: ability.damage,
-            hit_id: action.hit_id,
-            monument_id: targetTeam
-          });
-        });
-      }
-      break
-    case 'player_hit':
-      {
-        if (!possibleHits[action.hit_id]) return;
-        const targetPlayer = players[action.player_id];
-        delete possibleHits[action.hit_id];
-        if (player === thisPlayer) {
-          updateThisPlayerHud();
-        } else {
-          updateHudForPlayer(player);
-        }
-      }
-      break;
-    case 'players_hit':
-      {
-        if (!possibleHits[action.hit_id]) return;
-        delete possibleHits[action.hit_id];
-        for (let id in action.players_affected) {
-          if (!action.players_affected.hasOwnProperty(id)) continue;
-          if (!players.hasOwnProperty(id)) continue;
-          const p = players[id];
-          p.state.hp = action.players_affected[id];
-          if (p === thisPlayer) {
-            updateThisPlayerHud();
-          } else {
-            updateHudForPlayer(p);
-          }
-        }
-      }
-      break;
-    case 'monument_hit':
-      {
-        if (!possibleHits[action.hit_id]) return;
-        const targetMonument = gameEngine.map.monuments[action.monument_id];
-        console.log(`Monument #${action.monument_id} HP: ${gameState.monument_hps[action.monument_id]}`);
-        delete possibleHits[action.hit_id];
-      }
-      break;
-    case 'player_died':
-      {
-        const killer = players[action.killer_id];
-        killer.state.kills = action.killer_kills;
-        player.die();
-        if (player === thisPlayer) {
-          respawnLater(player);
-          deathText.text(`${killer.name} killed you!`);
-          deathOverlay.show();
-          spawnTime = parseFloat(action.spawn_time) * 1000;
-          deathCounter.text(Math.floor(spawnTime / 1000));
-          gameEngine.followPlayer(killer);
-        } else {
-          deleteHudForPlayer(player);
-          gameEngine.particleSystem.createExplosion(
-            new THREE.MeshLambertMaterial({ color: Player.TEAM_COLORS[player.team]}),
-            player.position,
-            0.004, 0.008
-          );
-        }
-        updateScoreCard();
-      }
-      break;
-    case 'player_respawn':
-      player.respawn(dataPlayer.state);
-      if (player === thisPlayer) {
-        deathOverlay.hide();
-        gameEngine.followPlayer(thisPlayer);
-        updateThisPlayerHud();
-      } else {
-        updateHudForPlayer(player);
-      }
-      break;
-    default:
-      break;
-    }
   }
 
   App.game = App.cable.subscriptions.create({
@@ -428,7 +257,12 @@ $(document).on('turbolinks:load', () => {
           gameEngine.addPlayer(players[p.id]);
 
           if (p.action) {
-            performAction(p.action, p, players[p.id]);
+            const data = {
+              type: p.action.action,
+              player: p,
+              ...p.action
+            };
+            this.received(data);
           }
           if (players[p.id].state.dead) {
             players[p.id].die();
@@ -450,9 +284,169 @@ $(document).on('turbolinks:load', () => {
           deleteHudForPlayer(players[data.player.id]);
         }
         break;
-      case 'player_action':
-        if (!isSetUp || !otherPlayersSetUp || gameIsOver) break;
-        performAction(data.action, data.player, players[data.player.id]);
+      case 'player_started_moving':
+        {
+          const player = players[data.player.id];
+          player.setState(data.player.state);
+          player.moveTo(data.point, getTimePassed(data.player.time));
+        }
+        break;
+      case 'player_finished_moving':
+        {
+          const player = players[data.player.id];
+          player.setState(data.player.state);
+          player.moving = false;
+        }
+        break;
+      case 'target_player':
+        {
+          const player = players[data.player.id];
+          player.setState(data.player.state);
+          player.moving = false;
+          const targetPlayer = players[data.target_id];
+          const ability = player.abilities[data.ability_index];
+          fireHomingMissile(data, data.player, player, targetPlayer, projectile => {
+            gameEngine.particleSystem.createExplosion(
+              new THREE.MeshLambertMaterial({ color: Player.TEAM_COLORS[player.team]}),
+              projectile.position,
+              0.001, 0.004, 100
+            );
+            possibleHits[data.hit_id] = true;
+            App.game.playerHit(targetPlayer, data.hit_id, ability.damage);
+          });
+        }
+        break;
+      case 'fire_grenade':
+        {
+          const player = players[data.player.id];
+          player.setState(data.player.state);
+          player.moving = false;
+          const target = tmpVector3.set(data.target_point.x, data.target_point.y, 0);
+          const ability = player.abilities[data.ability_index];
+          fireGrenade(data, data.player, player, target, projectile => {
+            gameEngine.particleSystem.createExplosion(
+              new THREE.MeshLambertMaterial({ color: Player.TEAM_COLORS[player.team]}),
+              projectile.position,
+              0.001, 0.004, 100
+            );
+            possibleHits[data.hit_id] = true;
+            const affectedPlayers = {};
+            let numAffectedPlayers = 0;
+            for (let id in players) {
+              if (!players.hasOwnProperty(id)) continue;
+              const p = players[id];
+              if (p.team === player.team) continue;
+              const damage = getDamageDone(p, ability, projectile.position);
+              if (damage <= 0) continue;
+              affectedPlayers[id] = damage;
+              numAffectedPlayers++;
+            }
+            console.log(affectedPlayers);
+            if (numAffectedPlayers > 0) {
+              App.game.playersHit(affectedPlayers, data.hit_id);
+            }
+          });
+        }
+        break;
+      case 'target_monument':
+        {
+          const player = players[data.player.id];
+          player.setState(data.player.state);
+          player.moving = false;
+          const targetTeam = 1 - player.team;
+          const targetMonument = gameEngine.map.monuments[targetTeam];
+          const ability = player.abilities[data.ability_index];
+          fireHomingMissile(data, data.player, player, targetMonument, projectile => {
+            gameEngine.particleSystem.createExplosion(
+              new THREE.MeshLambertMaterial({ color: Player.TEAM_COLORS[player.team]}),
+              projectile.position,
+              0.002, 0.006
+            );
+            possibleHits[data.hit_id] = true;
+            App.game.monumentHit(targetTeam, data.hit_id, ability.damage);
+          });
+        }
+        break
+      case 'player_hit':
+        {
+          const player = players[data.player.id];
+          player.setState(data.player.state);
+          if (!possibleHits[data.hit_id]) return;
+          const targetPlayer = players[data.player_id];
+          delete possibleHits[data.hit_id];
+          if (player === thisPlayer) {
+            updateThisPlayerHud();
+          } else {
+            updateHudForPlayer(player);
+          }
+        }
+        break;
+      case 'players_hit':
+        {
+          const player = players[data.player.id];
+          player.setState(data.player.state);
+          if (!possibleHits[data.hit_id]) return;
+          delete possibleHits[data.hit_id];
+          for (let id in data.players_affected) {
+            if (!data.players_affected.hasOwnProperty(id)) continue;
+            if (!players.hasOwnProperty(id)) continue;
+            const p = players[id];
+            p.state.hp = data.players_affected[id];
+            if (p === thisPlayer) {
+              updateThisPlayerHud();
+            } else {
+              updateHudForPlayer(p);
+            }
+          }
+        }
+        break;
+      case 'monument_hit':
+        {
+          const player = players[data.player.id];
+          player.setState(data.player.state);
+          if (!possibleHits[data.hit_id]) return;
+          const targetMonument = gameEngine.map.monuments[data.monument_id];
+          delete possibleHits[data.hit_id];
+        }
+        break;
+      case 'player_died':
+        {
+          const player = players[data.player.id];
+          player.setState(data.player.state);
+          const killer = players[data.killer_id];
+          killer.state.kills = data.killer_kills;
+          player.die();
+          if (player === thisPlayer) {
+            respawnLater(player);
+            deathText.text(`${killer.name} killed you!`);
+            deathOverlay.show();
+            spawnTime = parseFloat(data.spawn_time) * 1000;
+            deathCounter.text(Math.floor(spawnTime / 1000));
+            gameEngine.followPlayer(killer);
+          } else {
+            deleteHudForPlayer(player);
+            gameEngine.particleSystem.createExplosion(
+              new THREE.MeshLambertMaterial({ color: Player.TEAM_COLORS[player.team]}),
+              player.position,
+              0.004, 0.008
+            );
+          }
+          updateScoreCard();
+        }
+        break;
+      case 'player_respawn':
+        {
+          const player = players[data.player.id];
+          player.setState(data.player.state);
+          player.respawn(data.player.state);
+          if (player === thisPlayer) {
+            deathOverlay.hide();
+            gameEngine.followPlayer(thisPlayer);
+            updateThisPlayerHud();
+          } else {
+            updateHudForPlayer(player);
+          }
+        }
         break;
       case 'game_over':
         gameOver(data.winner);
@@ -462,10 +456,79 @@ $(document).on('turbolinks:load', () => {
       }
     },
 
-    sendAction(action) {
+    playerStartedMoving(point) {
       if (gameIsOver) return;
-      this.perform('send_action', action);
-    } ,
+      this.perform('player_started_moving', {
+        position: { x: thisPlayer.position.x, y: thisPlayer.position.y },
+        point: { x: point.x, y: point.y }
+      });
+    },
+
+    playerFinishedMoving() {
+      if (gameIsOver) return;
+      this.perform('player_finished_moving', {
+        position: { x: thisPlayer.position.x, y: thisPlayer.position.y },
+      });
+    },
+
+    targetPlayer(player, abilityIndex) {
+      if (gameIsOver) return;
+      this.perform('target_player', {
+        point: { x: thisPlayer.position.x, y: thisPlayer.position.y },
+        target_id: player.playerId,
+        ability_index: abilityIndex
+      });
+    },
+
+    fireGrenade(target, abilityIndex) {
+      if (gameIsOver) return;
+      this.perform('fire_grenade', {
+        point: { x: thisPlayer.position.x, y: thisPlayer.position.y },
+        target_point: { x: target.x, y: target.y },
+        ability_index: abilityIndex
+      });
+    },
+
+    targetMonument(abilityIndex) {
+      if (gameIsOver) return;
+      this.perform('target_monument', {
+        point: { x: thisPlayer.position.x, y: thisPlayer.position.y },
+        ability_index: abilityIndex
+      });
+    },
+
+    playerHit(player, hitId, damage) {
+      if (gameIsOver) return;
+      this.perform('player_hit', {
+        damage,
+        hit_id: hitId,
+        player_id: player.playerId
+      });
+    },
+
+    playersHit(affectedPlayers, hitId) {
+      if (gameIsOver) return;
+      this.perform('players_hit', {
+        hit_id: hitId,
+        players_affected: affectedPlayers
+      });
+    },
+
+    monumentHit(monumentId, hitId, damage) {
+      if (gameIsOver) return;
+      this.perform('monument_hit', {
+        damage,
+        hit_id: hitId,
+        monument_id: monumentId
+      });
+    },
+
+    playerRespawn(player) {
+      if (gameIsOver) return;
+      this.perform('player_respawn', {
+        player_id: player.playerId
+      });
+    },
 
     leaveGame() {
       this.perform('leave_game', {});
@@ -527,12 +590,7 @@ $(document).on('turbolinks:load', () => {
     if (!canUseAbility(ability, target)) return;
     thisPlayer.moving = false;
     // gameEngine.scene.remove(visualNavPath);
-    App.game.sendAction({
-      type: 'fire_grenade',
-      point: { x: thisPlayer.position.x, y: thisPlayer.position.y },
-      target_point: { x: target.x, y: target.y },
-      ability_index: abilityIndex
-    });
+    App.game.fireGrenade(target, abilityIndex);
     return true;
   }
 
@@ -543,12 +601,7 @@ $(document).on('turbolinks:load', () => {
     if (!canUseAbility(ability, player.position)) return;
     thisPlayer.moving = false;
     // gameEngine.scene.remove(visualNavPath);
-    App.game.sendAction({
-      type: 'target_player',
-      point: { x: thisPlayer.position.x, y: thisPlayer.position.y },
-      target_id: player.playerId,
-      ability_index: abilityIndex
-    });
+    App.game.targetPlayer(player, abilityIndex);
     return true;
   });
 
@@ -560,11 +613,7 @@ $(document).on('turbolinks:load', () => {
     if (!canUseAbility(ability, monument)) return;
     thisPlayer.moving = false;
     // gameEngine.scene.remove(visualNavPath);
-    App.game.sendAction({
-      type: 'target_monument',
-      point: { x: thisPlayer.position.x, y: thisPlayer.position.y },
-      ability_index: abilityIndex
-    });
+    App.game.targetMonument(abilityIndex);
     return true;
   });
 
