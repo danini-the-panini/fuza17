@@ -364,6 +364,14 @@ $(document).on('turbolinks:load', () => {
             return;
           }
         }
+        const targetTeam = 1 - player.team;
+        const monument = gameEngine.map.monuments[targetTeam];
+        const dist = tmpVector3.copy(monument.position).sub(missile.position).setZ(0).length();
+        if (dist <= 1) {
+          possibleHits[data.hit_id] = true;
+          App.game.monument_hit(targetTeam, data.hit_id, ability.damage);
+          return;
+        }
       });
     },
 
@@ -428,6 +436,12 @@ $(document).on('turbolinks:load', () => {
       if (!possibleHits[data.hit_id]) return;
       const targetMonument = gameEngine.map.monuments[data.monument_id];
       delete possibleHits[data.hit_id];
+      const projectile = gameEngine.projectiles.children.find(p => {
+        return p.hitId === data.hit_id;
+      });
+      if (projectile.constructor === Missile) {
+        projectile.stopMoving();
+      }
     },
 
     player_died(data) {
