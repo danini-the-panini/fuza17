@@ -194,8 +194,6 @@ $(document).on('turbolinks:load', () => {
   function getDamageDone(player, ability, position) {
     const dist = tmpVector3.copy(position).sub(player.position).length();
     if (dist > ability.radius) return 0;
-    console.log(dist);
-    console.log(ability);
     return (1.0 - dist / ability.radius) * ability.damage;
   }
 
@@ -320,9 +318,10 @@ $(document).on('turbolinks:load', () => {
           affectedPlayers[id] = damage;
           numAffectedPlayers++;
         }
-        console.log(affectedPlayers);
-        if (numAffectedPlayers > 0) {
-          App.game.players_hit(affectedPlayers, data.hit_id);
+        const monument = gameEngine.map.monuments[1 - player.team];
+        const monumentDamage = getDamageDone(monument, ability, projectile.position);
+        if (numAffectedPlayers > 0 || monumentDamage > 0) {
+          App.game.splash_damage(affectedPlayers, monumentDamage, data.hit_id);
         }
       });
     },
@@ -358,7 +357,7 @@ $(document).on('turbolinks:load', () => {
       }
     },
 
-    players_hit(data) {
+    splash_damage(data) {
       const player = players[data.player.id];
       player.setState(data.player.state);
       if (!possibleHits[data.hit_id]) return;
@@ -495,11 +494,12 @@ $(document).on('turbolinks:load', () => {
       });
     },
 
-    players_hit(affectedPlayers, hitId) {
+    splash_damage(affectedPlayers, monumentDamage, hitId) {
       if (gameIsOver) return;
-      this.perform('players_hit', {
+      this.perform('splash_damage', {
         hit_id: hitId,
-        players_affected: affectedPlayers
+        players_affected: affectedPlayers,
+        monument_damage: monumentDamage
       });
     },
 

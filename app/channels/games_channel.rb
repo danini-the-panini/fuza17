@@ -183,7 +183,7 @@ class GamesChannel < ApplicationCable::Channel
     source_player.save!
   end
 
-  def players_hit(action)
+  def splash_damage(action)
     game = find_game
     return unless game.in_progress?
     time = Time.now
@@ -202,7 +202,7 @@ class GamesChannel < ApplicationCable::Channel
     }
 
     ActionCable.server.broadcast channel_name,
-                                 type: 'players_hit',
+                                 type: 'splash_damage',
                                  player: {
                                    id: source_player.user_id,
                                    name: source_player.user.name,
@@ -214,6 +214,10 @@ class GamesChannel < ApplicationCable::Channel
                                    [ p.user_id, p.last_state['hp'] ]
                                  }.to_h
 
+    if action['monument_damage'] > 0
+      damage_monument(1 - source_player.team, action['monument_damage'], source_player, hit_id, time, game)
+    end
+
     target_players.each { |(tp,_)|
       check_player_death(tp, source_player, time)
     }.each { |(tp,_)|
@@ -222,6 +226,7 @@ class GamesChannel < ApplicationCable::Channel
 
     source_player.last_action = nil
     source_player.save!
+    game.save!
   end
 
   def monument_hit(action)
@@ -238,28 +243,7 @@ class GamesChannel < ApplicationCable::Channel
     source_player = game.players.find_by(user_id: hit.source_id)
     hit.destroy
 
-    game.state['monument_hps'][monument_id] -= action['damage']
-
-    ActionCable.server.broadcast channel_name,
-                                 type: 'monument_hit',
-                                 player: {
-                                   id: source_player.user_id,
-                                   name: source_player.user.name,
-                                   state: source_player.last_state,
-                                   time: time.to_f
-                                 },
-                                 damage: action['damage'],
-                                 hit_id: hit_id,
-                                 monument_id: monument_id,
-                                 game_state: game.state
-
-    if game.state['monument_hps'][monument_id] <= 0
-      game.status = :over
-      game.winner = 1 - monument_id
-      ActionCable.server.broadcast channel_name,
-                                   type: 'game_over',
-                                   winner: game.winner
-    end
+    damage_monument(monument_id, action['damage'], source_player, hit_id, time, game)
 
     source_player.update(last_action: nil)
     game.save!
@@ -423,5 +407,30 @@ class GamesChannel < ApplicationCable::Channel
       return true
     end
     false
+  end
+
+  def damage_monument(monument_id, damage_done, source_player, hit_id, time, game)
+    game.state['monument_hps'][monument_id] -= damage_done
+
+    ActionCable.server.broadcast channel_name,
+                                 type: 'monument_hit',
+                                 player: {
+                                   id: source_player.user_id,
+                                   name: source_player.user.name,
+                                   state: source_player.last_state,
+                                   time: time.to_f
+                                 },
+                                 damage: damage_done,
+                                 hit_id: hit_id,
+                                 monument_id: monument_id,
+                                 game_state: game.state
+
+    if game.state['monument_hps'][monument_id] <= 0
+      game.status = :over
+      game.winner = 1 - monument_id
+      ActionCable.server.broadcast channel_name,
+                                   type: 'game_over',
+                                   winner: game.winner
+    end
   end
 end
