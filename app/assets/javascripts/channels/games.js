@@ -683,7 +683,7 @@ $(document).on('turbolinks:load', () => {
     const time = +(new Date());
     const abilityIndex = 0;
     const ability = thisPlayer.abilities[abilityIndex];
-    if (!canUseAbility(ability, monument)) return;
+    if (!canUseAbility(ability, monument.position)) return;
     thisPlayer.moving = false;
     // gameEngine.scene.remove(visualNavPath);
     App.game.target_monument(abilityIndex);
