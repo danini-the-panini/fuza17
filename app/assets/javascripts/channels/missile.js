@@ -4,25 +4,32 @@ const Player = require('./player');
 const arcTravel = require('./arcTravel');
 const smokeTrail = require('./smokeTrail');
 
-class Grenade extends THREE.Object3D {
-  static SPEED = 0.01
+class Missile extends THREE.Object3D {
+  static SPEED = 0.005
   static HALF_UP = new THREE.Vector3(0, 0, 0.5)
-  static GEOM = new THREE.SphereGeometry(1);
 
   constructor(hitId, ability, startingPoint, target, team) {
     super();
 
     this.up.set(0, 0, 1);
-    const mesh = new THREE.Mesh(Grenade.GEOM, new THREE.MeshPhongMaterial({
-      color: Player.TEAM_COLORS[team]
-    }))
-    mesh.scale.multiplyScalar(0.2);
-    mesh.castShadow = true;
-    this.add(mesh);
+    let loader = new THREE.OBJLoader();
+    loader.load('/assets/bullet.obj', (object) => {
+      object.traverse(child => {
+        child.castShadow = true;
+        child.receiveShadow = false;
+        if (child.material) {
+          child.material.color = new THREE.Color(Player.TEAM_COLORS[team]);
+        }
+      });
+      object.scale.multiplyScalar(2);
+      this.add(object);
+    });
 
     this.hitId = hitId;
     this.ability = ability;
     this.team = team;
+
+    this._tmpVector3 = new THREE.Vector3();
 
     this.startingPoint = new THREE.Vector3(startingPoint.x, startingPoint.y, 0);
     this.position.copy(this.startingPoint);
@@ -31,27 +38,25 @@ class Grenade extends THREE.Object3D {
     this.travelVectorNorm = new THREE.Vector3();
     this.targetPoint(target);
 
-    this.speed = Grenade.SPEED;
+    this.speed = Missile.SPEED;
   }
 
   getHeight() {
-    const x = this.getProgress();
-    return -4 * x * x + 4 * x;
+    return 0.5;
   }
 
   update(delta) {
     this.moveOverTime(delta);
+    this._tmpVector3.copy(this.target).z += this.getHeight();
+    this.lookAt(this._tmpVector3);
   }
 }
 
-smokeTrail(Grenade, {
-  pjmin: 0, pjmax: 0,
-  sjmin: 0.1, sjmax: 0.1,
+smokeTrail(Missile, {
+  sjmin: 0.2, sjmax: 0.8,
   spawnTime: 30,
-  distance: 0,
-  scaleChange: -0.00003,
-  maxAge: 3000,
-  opacityChange: false
+  distance: 2,
+  maxAge: 10000
 });
-arcTravel(Grenade);
-module.exports = Grenade;
+arcTravel(Missile);
+module.exports = Missile;

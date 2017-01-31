@@ -34,6 +34,13 @@ class GamesChannel < ApplicationCable::Channel
           last_hit: time.to_f,
           damage: 20.0,
           radius: 2.0
+        },
+        {
+          cooldown: 0.5, # TODO: make this like 10s
+          type: 'direction',
+          range: 100.0,
+          last_hit: time.to_f,
+          damage: 40.0
         }
       ]
     }
@@ -156,6 +163,10 @@ class GamesChannel < ApplicationCable::Channel
   end
 
   def fire_grenade(action)
+    perform_attack(action)
+  end
+
+  def fire_missile(action)
     perform_attack(action)
   end
 

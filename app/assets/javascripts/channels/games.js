@@ -5,6 +5,7 @@ const GameEngine = require('./game_engine');
 const Player = require('./player');
 const HomingMissile = require('./homingMissile');
 const Grenade = require('./grenade');
+const Missile = require('./missile');
 
 $(document).on('turbolinks:load', () => {
   if (App.game) {
@@ -173,6 +174,15 @@ $(document).on('turbolinks:load', () => {
     projectile.onFinishedMoving(() => onHitCallback(projectile));
   }
 
+  function fireMissile(action, dataPlayer, player, direction, onHitCallback) {
+    const ability = player.abilities[action.ability_index];
+    tmpVector3.copy(direction).multiplyScalar(ability.range).add(player.position);
+    const projectile = new Missile(action.hit_id, ability, player.position, tmpVector3, player.team);
+    projectile.targetPoint(tmpVector3, getTimePassed(dataPlayer.time));
+    gameEngine.addProjectile(projectile);
+    projectile.onFinishedMoving(() => onHitCallback(projectile));
+  }
+
   function gameOver(winner) {
     gameIsOver = true;
 
@@ -323,6 +333,22 @@ $(document).on('turbolinks:load', () => {
         if (numAffectedPlayers > 0 || monumentDamage > 0) {
           App.game.splash_damage(affectedPlayers, monumentDamage, data.hit_id);
         }
+      });
+    },
+
+    fire_missile(data) {
+      const player = players[data.player.id];
+      player.setState(data.player.state);
+      player.moving = false;
+      const direction = tmpVector3.set(data.direction.x, data.direction.y, 0);
+      const ability = player.abilities[data.ability_index];
+      fireMissile(data, data.player, player, direction, projectile => {
+        gameEngine.particleSystem.createExplosion(
+          new THREE.MeshLambertMaterial({ color: Player.TEAM_COLORS[player.team]}),
+          projectile.position,
+          0.004, 0.008, 500
+        );
+        possibleHits[data.hit_id] = true;
       });
     },
 
@@ -477,6 +503,15 @@ $(document).on('turbolinks:load', () => {
       });
     },
 
+    fire_missile(direction, abilityIndex) {
+      if (gameIsOver) return;
+      this.perform('fire_missile', {
+        point: { x: thisPlayer.position.x, y: thisPlayer.position.y },
+        direction: { x: direction.x, y: direction.y },
+        ability_index: abilityIndex
+      });
+    },
+
     target_monument(abilityIndex) {
       if (gameIsOver) return;
       this.perform('target_monument', {
@@ -583,6 +618,17 @@ $(document).on('turbolinks:load', () => {
     return true;
   }
 
+  function triggerMissileLaunch() {
+    const abilityIndex = 2;
+    const ability = thisPlayer.abilities[abilityIndex];
+    const direction = gameEngine.getMouseFloorIntersection().sub(thisPlayer.position).normalize();
+    if (!canUseAbility(ability)) return;
+    thisPlayer.moving = false;
+    // gameEngine.scene.remove(visualNavPath);
+    App.game.fire_missile(direction, abilityIndex);
+    return true;
+  }
+
   gameEngine.onPlayerClicked(player => {
     if (player === thisPlayer || player.team === thisPlayer.team) return false;
     const abilityIndex = 0;
@@ -621,6 +667,8 @@ $(document).on('turbolinks:load', () => {
       gameMenu.toggle();
     } else if (c === 'Q') {
       triggerGrenadeLaunch();
+    } else if (c === 'E') {
+      triggerMissileLaunch();
     }
   });
 

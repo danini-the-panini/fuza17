@@ -41,7 +41,6 @@ function getProp(object, key, defaultValue = null) {
   return object[key];
 }
 
-const OPACITY_CHANGE = -0.02;
 const SCALE_CHANGE = 0.0001;
 const TRAIL_MAX_AGE = 1000;
 
@@ -55,7 +54,7 @@ function smokeTrail(klass, options = {}) {
   const spawnTime = getProp(options, 'spawnTime', SMOKE_TIME);
   const distance = getProp(options, 'distance', 1);
 
-  const opacityChange = getProp(options, 'opacityChange', OPACITY_CHANGE);
+  const opacityChange = getProp(options, 'opacityChange', true);
   const s = getProp(options, 'scaleChange', SCALE_CHANGE);
   const scaleChange = new THREE.Vector3(s, s, s);
 
@@ -100,7 +99,9 @@ smokeTrail.update = function update(delta) {
       if (trail.parent) trail.parent.remove(trail);
       this.allTrails.splice(i, 1);
     } else {
-      trail.material.opacity += trail._opacityChange;
+      if (trail._opacityChange) {
+        trail.material.opacity = 1 - trailAge / trail._maxAge;
+      }
       trail.scale.add(tmpVector3.copy(trail._scaleChange).multiplyScalar(delta));
     }
   }
