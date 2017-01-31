@@ -47,7 +47,7 @@ class GamesChannel < ApplicationCable::Channel
 
     player = if game.in_progress?
       game.players.find_or_create_by(user_id: current_user.id) do |p|
-        p.last_state = initial_state
+        p.state = initial_state
         p.team = team_index
 
         ActionCable.server.broadcast channel_name,
@@ -56,7 +56,7 @@ class GamesChannel < ApplicationCable::Channel
                                        id: current_user.id,
                                        name: current_user.name,
                                        time: time.to_f,
-                                       state: p.last_state
+                                       state: p.state
                                      }
       end
     else
@@ -71,7 +71,7 @@ class GamesChannel < ApplicationCable::Channel
                                    id: current_user.id,
                                    name: current_user.name,
                                    time: time.to_f,
-                                   state: player.last_state
+                                   state: player.state
                                  },
                                  game_state: game.state,
                                  game_over: game.over?,
@@ -81,7 +81,7 @@ class GamesChannel < ApplicationCable::Channel
       {
         id: p.user.id,
         name: p.user.name,
-        state: p.last_state,
+        state: p.state,
         action: p.last_action,
         time: p.last_action_time.to_f
       }
@@ -90,6 +90,8 @@ class GamesChannel < ApplicationCable::Channel
     ActionCable.server.broadcast user_channel_name,
                                  type: 'other_players',
                                  players: players
+
+    player.save_redis_attributes
   end
 
   def unsubscribed
@@ -102,10 +104,10 @@ class GamesChannel < ApplicationCable::Channel
                                  player: {
                                    id: player.user_id,
                                    name: player.user.name,
-                                   state: player.last_state,
+                                   state: player.state,
                                    time: Time.now.to_f
                                  },
-                                 position: { x: player.last_state['x'], y: player.last_state['y'] }
+                                 position: { x: player.state['x'], y: player.state['y'] }
   end
 
   def player_started_moving(action)
@@ -113,9 +115,9 @@ class GamesChannel < ApplicationCable::Channel
     return unless game.in_progress?
     player = game.players.find_by(user: current_user)
     time = Time.now
-    state = player.last_state
+    state = player.state
 
-    return if state['dead']
+    return if state['dead'  ]
     return unless map.can_traverse?(action['point']['x'], action['point']['y'])
     state['x'] = action['position']['x']
     state['y'] = action['position']['y']
@@ -131,7 +133,10 @@ class GamesChannel < ApplicationCable::Channel
                              position: action['position'],
                              point: action['point']
 
-    player.update(last_action: action, last_action_time: time, last_state: state)
+    player.last_action = action
+    player.last_action_time = time
+    player.state = state
+    player.save_redis_attributes
   end
 
   def player_finished_moving(action)
@@ -139,7 +144,7 @@ class GamesChannel < ApplicationCable::Channel
     return unless game.in_progress?
     player = game.players.find_by(user: current_user)
     time = Time.now
-    state = player.last_state
+    state = player.state
 
     return if state['dead']
     state['x'] = action['position']['x']
@@ -155,7 +160,10 @@ class GamesChannel < ApplicationCable::Channel
                              },
                              position: action['position']
 
-    player.update(last_action: action, last_action_time: time, last_state: state)
+    player.last_action = action
+    player.last_action_time = time
+    player.state = state
+    player.save_redis_attributes
   end
 
   def target_player(action)
@@ -181,17 +189,19 @@ class GamesChannel < ApplicationCable::Channel
 
     hit_id = action['hit_id']
 
-    hit = Hit.find_by(hit_identifier: hit_id)
+    hit = game.find_hit(hit_id)
     return if hit.nil?
-    source_player = game.players.find_by(user_id: hit.source_id)
-    hit.destroy
+    source_player = game.players.find_by(user_id: hit['source_id'])
+    game.destroy_hit(hit_id)
 
     target_player = game.players.find_by(user_id: action['player_id'])
     damage_player(target_player, action['damage'], source_player, action, time)
 
-    target_player.save!
+    target_player.save_redis_attributes
+
     source_player.last_action = nil
-    source_player.save!
+    source_player.last_action_time = nil
+    source_player.save_redis_attributes
   end
 
   def splash_damage(action)
@@ -201,10 +211,10 @@ class GamesChannel < ApplicationCable::Channel
 
     hit_id = action['hit_id']
 
-    hit = Hit.find_by(hit_identifier: hit_id)
+    hit = game.find_hit(hit_id)
     return if hit.nil?
-    source_player = game.players.find_by(user_id: hit.source_id)
-    hit.destroy
+    source_player = game.players.find_by(user_id: hit['source_id'])
+    game.destroy_hit(hit_id)
 
     target_players = action['players_affected'].map { |(target_id, damage_done)|
       [game.players.find_by(user_id: target_id), damage_done]
@@ -217,12 +227,12 @@ class GamesChannel < ApplicationCable::Channel
                                  player: {
                                    id: source_player.user_id,
                                    name: source_player.user.name,
-                                   state: source_player.last_state,
+                                   state: source_player.state,
                                    time: time.to_f
                                  },
                                  hit_id: hit_id,
                                  players_affected: target_players.map { |(p,_)|
-                                   [ p.user_id, p.last_state['hp'] ]
+                                   [ p.user_id, p.state['hp'] ]
                                  }.to_h
 
     if action['monument_damage'] > 0
@@ -232,12 +242,14 @@ class GamesChannel < ApplicationCable::Channel
     target_players.each { |(tp,_)|
       check_player_death(tp, source_player, time)
     }.each { |(tp,_)|
-      tp.save!
+      tp.save_redis_attributes
     }
 
     source_player.last_action = nil
-    source_player.save!
+    source_player.last_action_time = nil
+    source_player.save_redis_attributes
     game.save!
+    game.save_redis_attributes
   end
 
   def monument_hit(action)
@@ -249,15 +261,18 @@ class GamesChannel < ApplicationCable::Channel
 
     hit_id = action['hit_id']
 
-    hit = Hit.find_by(hit_identifier: hit_id)
+    hit = game.find_hit(hit_id)
     return if hit.nil?
-    source_player = game.players.find_by(user_id: hit.source_id)
-    hit.destroy
+    source_player = game.players.find_by(user_id: hit['source_id'])
+    game.destroy_hit(hit_id)
 
     damage_monument(monument_id, action['damage'], source_player, hit_id, time, game)
 
-    source_player.update(last_action: nil)
+    source_player.last_action = nil
+    source_player.last_action_time = nil
+    source_player.save_redis_attributes
     game.save!
+    game.save_redis_attributes
   end
 
   def player_respawn(action)
@@ -266,7 +281,7 @@ class GamesChannel < ApplicationCable::Channel
     time = Time.now
 
     target_player = game.players.find_by(user_id: action['player_id'])
-    target_state = target_player.last_state
+    target_state = target_player.state
 
     return unless target_state['dead']
     return unless time.to_f - target_state['death_time'] >= Player::SPAWN_TIME
@@ -290,7 +305,7 @@ class GamesChannel < ApplicationCable::Channel
                                      time: time.to_f
                                  }
 
-    target_player.update(last_state: target_state)
+    target_player.save_redis_attributes
   end
 
   def leave_game
@@ -342,7 +357,7 @@ class GamesChannel < ApplicationCable::Channel
     return unless game.in_progress?
     player = game.players.find_by(user: current_user)
     time = Time.now
-    state = player.last_state
+    state = player.state
 
     return if state['dead']
     state['x'] = action['point']['x']
@@ -352,7 +367,7 @@ class GamesChannel < ApplicationCable::Channel
 
     return if time.to_f - ability['last_hit'] < ability['cooldown']
 
-    state['abilities'][ability_index]['last_hit'] = time.to_f
+    ability['last_hit']= time.to_f
     action['hit_id'] = SecureRandom.hex(10)
 
     ActionCable.server.broadcast channel_name,
@@ -364,12 +379,15 @@ class GamesChannel < ApplicationCable::Channel
                                                 time: time.to_f
                                               })
 
-    Hit.create(source_id: current_user.id, hit_identifier: action['hit_id'], ability_index: ability_index)
-    player.update(last_action: action, last_action_time: time, last_state: state)
+    game.create_hit(action['hit_id'], source_id: current_user.id, ability_index: ability_index)
+
+    player.last_action = action
+    player.last_action_time = time
+    player.save_redis_attributes
   end
 
   def damage_player(target_player, damage_done, source_player, action, time, rebroadcast: true)
-    target_state = target_player.last_state
+    target_state = target_player.state
     return false if target_state['dead']
     target_state['hp'] -= damage_done
 
@@ -393,7 +411,7 @@ class GamesChannel < ApplicationCable::Channel
   end
 
   def check_player_death(target_player, source_player, time)
-    target_state = target_player.last_state
+    target_state = target_player.state
 
     return false if target_state['dead']
 
@@ -402,7 +420,7 @@ class GamesChannel < ApplicationCable::Channel
       target_state['deaths'] += 1
       target_state['death_time'] = time.to_f
 
-      source_player.last_state['kills'] += 1
+      source_player.state['kills'] += 1
 
       ActionCable.server.broadcast channel_name,
                                    type: 'player_died',
@@ -414,7 +432,7 @@ class GamesChannel < ApplicationCable::Channel
                                    },
                                    spawn_time: Player::SPAWN_TIME,
                                    killer_id: source_player.user_id,
-                                   killer_kills: source_player.last_state['kills']
+                                   killer_kills: source_player.state['kills']
       return true
     end
     false
@@ -428,7 +446,7 @@ class GamesChannel < ApplicationCable::Channel
                                  player: {
                                    id: source_player.user_id,
                                    name: source_player.user.name,
-                                   state: source_player.last_state,
+                                   state: source_player.state,
                                    time: time.to_f
                                  },
                                  damage: damage_done,

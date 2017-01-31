@@ -15,8 +15,11 @@ class GamesController < ApplicationController
     @game = current_user.games.build(game_params)
     @game.status = :in_progress
     @game.winner = nil
-    @game.state = Game.default_state
     @game.save!
+
+    @game.state = Game.default_state
+    @game.save_redis_attributes
+
     redirect_to game_path(@game)
   end
 

@@ -635,7 +635,7 @@ $(document).on('turbolinks:load', () => {
 
   function canUseAbility(ability, target = null) {
     const time = +(new Date());
-    if (time - ability.last_hit < ability.cooldown) return false;
+    if (time / 1000 - ability.last_hit < ability.cooldown) return false;
     if (target && ability.type !== 'direction') {
       if (!inRange(thisPlayer.position, target, ability.range)) return false;
     }
