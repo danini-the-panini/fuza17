@@ -1,4 +1,4 @@
-const BinaryHeap = require('./BinaryHeap');
+const BinaryHeap = require('./binaryHeap');
 
 function pathTo(node) {
   let curr = node;
